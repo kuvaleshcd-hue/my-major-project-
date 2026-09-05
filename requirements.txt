@@ -1,0 +1,5 @@
+sarvamai>=0.1.0
+python-dotenv>=1.0.0
+pydub>=0.25.1
+streamlit>=1.25.0
+yt-dlp>=2024.0.0
