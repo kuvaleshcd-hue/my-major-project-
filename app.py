@@ -33,7 +33,7 @@ st.markdown("""
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
   .hero {
-    background: linear-gradient(135deg, #f97316, #ea580c);
+    background: linear-gradient(135deg, #22d3ee, #0891b2);
     border-radius: 16px; padding: 2.2rem 2rem;
     margin-bottom: 1.5rem; text-align: center; color: white;
   }
@@ -46,9 +46,9 @@ st.markdown("""
     font-size: 0.76rem; color: #ffffff; font-weight: 500;
   }
   .feature-badge {
-    background: #f0fdf4; border: 1px solid #86efac;
+    background: #ecfeff; border: 1px solid #67e8f9;
     border-radius: 20px; padding: 4px 14px;
-    font-size: 0.76rem; color: #166534; font-weight: 600;
+    font-size: 0.76rem; color: #0e7490; font-weight: 600;
     display: inline-block; margin: 3px;
   }
   .tx-box {
