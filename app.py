@@ -9,6 +9,7 @@ import os
 import re
 import tempfile
 import time
+import subprocess
 from pathlib import Path
 
 import streamlit as st
@@ -115,8 +116,26 @@ with st.sidebar:
                               help="Stretch/compress TTS audio to match original segment duration")
     do_subtitles = st.toggle("📝 Burn subtitles",     value=True,
                               help="Burn translated text onto the video")
+    if do_subtitles:
+        sub_col1, sub_col2, sub_col3 = st.columns(3)
+        with sub_col1: sub_font_size = st.number_input("Size", 10, 72, 22)
+        with sub_col2: sub_font_color = st.color_picker("Text", "#FFFFFF")
+        with sub_col3: sub_bg_color = st.color_picker("Bg", "#000000")
+    else:
+        sub_font_size = 22; sub_font_color = "#FFFFFF"; sub_bg_color = "#000000"
+
     do_srt       = st.toggle("💾 Export SRT file",    value=True,
                               help="Download .srt subtitle file")
+    do_bgm       = st.toggle("🎵 Keep background music", value=False,
+                              help="Retain original background music using Demucs AI (takes longer)")
+    if do_bgm:
+        bgm_volume = st.slider("BGM Volume", 0.0, 2.0, 0.5, 0.1)
+    else:
+        bgm_volume = 0.5
+
+    st.divider()
+    st.markdown("### 🖼️ Watermark")
+    watermark_file = st.file_uploader("Upload Logo", type=["png", "jpg"], label_visibility="collapsed")
 
     st.divider()
     st.markdown("""
@@ -133,6 +152,18 @@ LANG_EMOJI = {
     "ml-IN":"🟡","mr-IN":"🔴","bn-IN":"🟤","gu-IN":"⚪",
     "pa-IN":"🔶","od-IN":"🔷","en-IN":"🏴",
 }
+
+def trim_video(input_path: str, start: int, end: int) -> str:
+    out = input_path.replace(".mp4", "_trimmed.mp4")
+    cmd = ["ffmpeg", "-y", "-i", input_path]
+    if start > 0:
+        cmd += ["-ss", str(start)]
+    if end > 0:
+        cmd += ["-to", str(end)]
+    cmd += ["-c", "copy", out]
+    subprocess.run(cmd, capture_output=True)
+    return out
+
 
 def language_selector(key_prefix: str) -> list[str]:
     if f"{key_prefix}_langs" not in st.session_state:
@@ -161,10 +192,12 @@ def show_result(r: dict, stem: str):
     """Render one dub result — videos, downloads, transcripts."""
     result = r["result"]
 
-    # ── Tabs: dubbed | subtitled | transcripts
+    # ── Tabs: dubbed | subtitled | transcripts | audio
     tab_labels = ["🎬 Dubbed video"]
     if r.get("subtitled_bytes"):
         tab_labels.append("📝 With subtitles")
+    if r.get("audio_bytes"):
+        tab_labels.append("🎵 Audio Only")
     tab_labels.append("📄 Transcripts")
 
     tabs = st.tabs(tab_labels)
@@ -195,6 +228,19 @@ def show_result(r: dict, stem: str):
             )
         tab_idx += 1
 
+    if r.get("audio_bytes"):
+        with tabs[tab_idx]:
+            st.audio(r["audio_bytes"])
+            st.download_button(
+                f"⬇️ Download Audio (.wav)",
+                data=r["audio_bytes"],
+                file_name=f"{stem}_dubbed_{r['lang_code']}.wav",
+                mime="audio/wav",
+                use_container_width=True,
+                key=f"dl_aud_{stem}_{r['lang_code']}",
+            )
+        tab_idx += 1
+
     with tabs[tab_idx]:
         col1, col2 = st.columns(2)
         with col1:
@@ -222,7 +268,9 @@ def show_result(r: dict, stem: str):
 
 def run_pipeline(input_path: str, selected: list, source_lang: str,
                  speaker: str, stem: str,
-                 autofit: bool, burn_subs: bool, do_srt: bool):
+                 autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
+                 bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
+                 watermark_path: str):
     from pipeline import dub_video
 
     with tempfile.TemporaryDirectory(prefix="sarvam_out_") as outdir:
@@ -251,6 +299,12 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         autofit=autofit,
                         burn_subs=burn_subs,
                         export_srt=do_srt,
+                        keep_bgm=keep_bgm,
+                        bgm_volume=bgm_volume,
+                        sub_font_size=sub_font_size,
+                        sub_font_color=sub_font_color,
+                        sub_bg_color=sub_bg_color,
+                        watermark_path=watermark_path,
                     )
                     elapsed = time.time() - t0
 
@@ -271,6 +325,11 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         with open(result.subtitled_video, "rb") as vf:
                             subtitled_bytes = vf.read()
 
+                    audio_bytes = None
+                    if result.audio_path and os.path.exists(result.audio_path):
+                        with open(result.audio_path, "rb") as af:
+                            audio_bytes = af.read()
+
                     srt_content = None
                     if result.srt_path and os.path.exists(result.srt_path):
                         with open(result.srt_path, "r", encoding="utf-8") as sf:
@@ -280,6 +339,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         "lang_code": lang_code, "lang_name": lang_name,
                         "result": result, "video_bytes": video_bytes,
                         "subtitled_bytes": subtitled_bytes,
+                        "audio_bytes": audio_bytes,
                         "srt_content": srt_content,
                         "elapsed": elapsed,
                     })
@@ -340,6 +400,11 @@ with tab_upload:
             st.video(uploaded)
             st.caption(f"📄 `{uploaded.name}` · {uploaded.size/(1024*1024):.1f} MB")
 
+        st.markdown("#### ✂️ Trim Video")
+        trim_col1, trim_col2 = st.columns(2)
+        with trim_col1: start_time = st.number_input("Start (s)", min_value=0, value=0, key="start_up")
+        with trim_col2: end_time = st.number_input("End (s)", min_value=0, value=0, help="0 means till the end", key="end_up")
+
         selected_upload = language_selector("upload")
         st.markdown("")
         run_upload = st.button(
@@ -362,6 +427,7 @@ with tab_upload:
             if do_autofit:   feats.append("⏱️ Auto-fit")
             if do_subtitles: feats.append("📝 Subtitles")
             if do_srt:       feats.append("💾 SRT")
+            if do_bgm:       feats.append("🎵 BGM")
             st.success(
                 f"Ready → **{', '.join(SUPPORTED_LANGUAGES[l] for l in selected_upload)}**  |  {' · '.join(feats)}",
                 icon="✅",
@@ -373,14 +439,27 @@ with tab_upload:
             ) as tmp:
                 tmp.write(uploaded.getbuffer())
                 tmp_path = tmp.name
+
+            wm_path = None
+            if watermark_file:
+                with tempfile.NamedTemporaryFile(suffix=Path(watermark_file.name).suffix, delete=False) as wm_tmp:
+                    wm_tmp.write(watermark_file.getbuffer())
+                    wm_path = wm_tmp.name
+
+            if start_time > 0 or end_time > 0:
+                tmp_path = trim_video(tmp_path, start_time, end_time)
+
             try:
                 run_pipeline(
                     tmp_path, selected_upload, source_lang, speaker,
                     Path(uploaded.name).stem,
-                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt,
+                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
+                    bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
+                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
                 )
             finally:
-                os.unlink(tmp_path)
+                if os.path.exists(tmp_path): os.unlink(tmp_path)
+                if wm_path and os.path.exists(wm_path): os.unlink(wm_path)
 
 
 # ── TAB 2: YouTube ────────────────────────────────────────────────────────────
@@ -393,6 +472,8 @@ with tab_youtube:
             placeholder="https://www.youtube.com/watch?v=...",
             label_visibility="collapsed", key="yt_url",
         )
+        
+        yt_res = st.selectbox("Resolution", ["360p", "480p", "720p", "1080p", "Best"], index=2)
 
         yt_valid    = False
         yt_video_id = None
@@ -414,6 +495,12 @@ with tab_youtube:
                 st.warning("⚠️ Paste a valid YouTube URL")
 
         st.info("💡 **Tip:** Short clips (30–90s) work best.", icon="ℹ️")
+        
+        st.markdown("#### ✂️ Trim Video")
+        yt_trim_col1, yt_trim_col2 = st.columns(2)
+        with yt_trim_col1: yt_start_time = st.number_input("Start (s)", min_value=0, value=0, key="yt_start")
+        with yt_trim_col2: yt_end_time = st.number_input("End (s)", min_value=0, value=0, help="0 means till the end", key="yt_end")
+
         selected_yt = language_selector("yt")
         st.markdown("")
         run_yt = st.button(
@@ -438,6 +525,7 @@ with tab_youtube:
             if do_autofit:   feats.append("⏱️ Auto-fit")
             if do_subtitles: feats.append("📝 Subtitles")
             if do_srt:       feats.append("💾 SRT")
+            if do_bgm:       feats.append("🎵 BGM")
             st.success(
                 f"Ready → **{', '.join(SUPPORTED_LANGUAGES[l] for l in selected_yt)}**  |  {' · '.join(feats)}",
                 icon="✅",
@@ -453,8 +541,16 @@ with tab_youtube:
                         import yt_dlp
 
                         yt_out = os.path.join(ytdir, "yt_video.mp4")
+                        
+                        if yt_res == "Best":
+                            fmt = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+                        else:
+                            res_map = {"360p": 360, "480p": 480, "720p": 720, "1080p": 1080}
+                            h = res_map[yt_res]
+                            fmt = f"bestvideo[height<={h}][ext=mp4]+bestaudio[ext=m4a]/best[height<={h}][ext=mp4]/best"
+
                         ydl_opts = {
-                            "format": "worst[ext=mp4]/worst",  # smallest = fastest
+                            "format": fmt,
                             "outtmpl": yt_out,
                             "quiet": True,
                             "no_warnings": True,
@@ -482,9 +578,23 @@ with tab_youtube:
                 st.markdown("**Original:**")
                 st.video(yt_out)
                 st.markdown("---")
+                
+                if yt_start_time > 0 or yt_end_time > 0:
+                    yt_out = trim_video(yt_out, yt_start_time, yt_end_time)
+                    
+                wm_path = None
+                if watermark_file:
+                    with tempfile.NamedTemporaryFile(suffix=Path(watermark_file.name).suffix, delete=False) as wm_tmp:
+                        wm_tmp.write(watermark_file.getbuffer())
+                        wm_path = wm_tmp.name
 
                 safe_title = re.sub(r"[^\w\-]", "_", yt_title)[:40]
                 run_pipeline(
                     yt_out, selected_yt, source_lang, speaker, safe_title,
-                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt,
+                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
+                    bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
+                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
                 )
+                
+                if wm_path and os.path.exists(wm_path):
+                    os.unlink(wm_path)

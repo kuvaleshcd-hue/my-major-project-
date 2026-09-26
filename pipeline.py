@@ -10,6 +10,7 @@ NEW FEATURES:
   ✅ Audio timing auto-fit  — stretch/compress TTS to match original slot
   ✅ Subtitle overlay       — burn translated subtitles onto video
   ✅ Export SRT             — .srt file alongside dubbed video
+  ✅ Background music       — retain original BGM using Demucs
 """
 
 import os
@@ -70,6 +71,7 @@ class DubResult:
     segment_count:     int
     srt_path:          Optional[str] = None
     subtitled_video:   Optional[str] = None
+    audio_path:        Optional[str] = None
 
 
 # ── Step 1: Extract audio ─────────────────────────────────────────────────────
@@ -322,14 +324,22 @@ def export_srt(
     return output_path
 
 
-# ── NEW: Subtitle overlay ─────────────────────────────────────────────────────
+def hex_to_bgr(hex_color: str, alpha: str = "00") -> str:
+    """Convert #RRGGBB to FFmpeg &H{alpha}BBGGRR"""
+    hex_color = hex_color.lstrip("#")
+    if len(hex_color) != 6:
+        return f"&H{alpha}FFFFFF"
+    r, g, b = hex_color[0:2], hex_color[2:4], hex_color[4:6]
+    return f"&H{alpha}{b}{g}{r}"
+
+
 def burn_subtitles(
     video_path: str,
     srt_path: str,
     output_path: str,
     font_size: int = 22,
-    font_color: str = "white",
-    box_color: str = "black@0.5",
+    font_color: str = "#FFFFFF",
+    bg_color: str = "#000000",
 ) -> str:
     """
     Burn translated subtitles onto the video using FFmpeg subtitles filter.
@@ -339,13 +349,16 @@ def burn_subtitles(
 
     # Escape path for FFmpeg subtitles filter (colons and backslashes)
     srt_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
+    
+    primary_col = hex_to_bgr(font_color, alpha="00")
+    back_col = hex_to_bgr(bg_color, alpha="80")
 
     subtitle_filter = (
         f"subtitles='{srt_escaped}'"
         f":force_style='FontSize={font_size},"
-        f"PrimaryColour=&H00FFFFFF,"
+        f"PrimaryColour={primary_col},"
         f"OutlineColour=&H00000000,"
-        f"BackColour=&H80000000,"
+        f"BackColour={back_col},"
         f"BorderStyle=3,"
         f"Outline=1,"
         f"Shadow=0,"
@@ -367,30 +380,90 @@ def burn_subtitles(
     return output_path
 
 
+# ── NEW: Watermark ────────────────────────────────────────────────────────────
+def add_watermark(video_path: str, watermark_path: str, output_path: str) -> str:
+    """Add a watermark image to the top-right corner."""
+    log.info(f"[WATERMARK] Adding watermark to {video_path}")
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-i", watermark_path,
+        "-filter_complex", "overlay=W-w-10:10",
+        "-c:a", "copy",
+        output_path,
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        log.warning(f"[WATERMARK] Watermark failed: {r.stderr[:300]}")
+        return video_path
+    log.info(f"[WATERMARK] Done → {output_path}")
+    return output_path
+
+
+# ── NEW: Extract BGM ──────────────────────────────────────────────────────────
+def extract_bgm(audio_path: str, output_dir: str) -> str:
+    """Uses Demucs to separate vocals and background music."""
+    log.info("[BGM] Running Demucs to separate background music...")
+    cmd = [
+        "demucs",
+        "--two-stems=vocals",
+        "-n", "mdx_extra",
+        "-o", output_dir,
+        audio_path
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        log.warning(f"[BGM] Demucs failed: {r.stderr[:500]}")
+        return ""
+    
+    base_name = os.path.splitext(os.path.basename(audio_path))[0]
+    bgm_path = os.path.join(output_dir, "mdx_extra", base_name, "no_vocals.wav")
+    if os.path.exists(bgm_path):
+        log.info(f"[BGM] Extracted BGM to {bgm_path}")
+        return bgm_path
+    return ""
+
+
 # ── Step 5: Build audio track + mux ──────────────────────────────────────────
 def build_audio_track(
     seg_audio_pairs: list[tuple[TimedSegment, str]],
     video_duration: float,
     output_wav: str,
+    bgm_path: Optional[str] = None,
+    bgm_volume: float = 0.5,
     sample_rate: int = 24000,
 ) -> None:
     log.info(f"[MUX] Building audio track ({video_duration:.1f}s)")
 
-    if len(seg_audio_pairs) == 1 and seg_audio_pairs[0][0].start == 0.0:
+    if len(seg_audio_pairs) == 1 and seg_audio_pairs[0][0].start == 0.0 and not bgm_path:
         import shutil
         shutil.copy(seg_audio_pairs[0][1], output_wav)
         log.info("[MUX] Single segment — copied directly")
         return
 
     inputs, filter_parts = [], []
+    
+    if bgm_path:
+        inputs += ["-i", bgm_path]
+        filter_parts.append(f"[0:a]volume={bgm_volume}[bgm]")
+    
+    offset = 1 if bgm_path else 0
+    
     for i, (seg, wav_path) in enumerate(seg_audio_pairs):
         inputs += ["-i", wav_path]
         delay_ms = int(seg.start * 1000)
-        filter_parts.append(f"[{i}:a]adelay={delay_ms}|{delay_ms}[a{i}]")
+        idx = i + offset
+        filter_parts.append(f"[{idx}:a]adelay={delay_ms}|{delay_ms}[a{i}]")
 
     n = len(seg_audio_pairs)
-    mix_inputs = "".join(f"[a{i}]" for i in range(n))
-    filter_parts.append(f"{mix_inputs}amix=inputs={n}:normalize=0[out]")
+    mix_inputs = ""
+    if bgm_path:
+        mix_inputs += "[bgm]"
+    mix_inputs += "".join(f"[a{i}]" for i in range(n))
+    
+    total_mix = n + (1 if bgm_path else 0)
+    filter_parts.append(f"{mix_inputs}amix=inputs={total_mix}:normalize=0[out]")
+    
     filter_complex = ";".join(filter_parts)
 
     cmd = (
@@ -433,6 +506,12 @@ def dub_video(
     autofit:        bool = True,
     burn_subs:      bool = True,
     export_srt:     bool = True,
+    keep_bgm:       bool = False,
+    bgm_volume:     float = 0.5,
+    sub_font_size:  int = 22,
+    sub_font_color: str = "#FFFFFF",
+    sub_bg_color:   str = "#000000",
+    watermark_path: Optional[str] = None,
 ) -> DubResult:
     """
     Full pipeline: video in → dubbed video (+ optional SRT + subtitled video).
@@ -470,6 +549,10 @@ def dub_video(
         audio_wav = os.path.join(tmpdir, "source_audio.wav")
         extract_audio(video_path, audio_wav)
 
+        bgm_path = None
+        if keep_bgm:
+            bgm_path = extract_bgm(audio_wav, tmpdir)
+
         # ── 2. STT
         transcript, segments = transcribe_audio(
             client, audio_wav, source_lang, chunk_dir=tmpdir
@@ -501,15 +584,35 @@ def dub_video(
         # ── 5. Build audio track + mux
         duration   = get_video_duration(video_path)
         dubbed_wav = os.path.join(tmpdir, "dubbed_audio.wav")
-        build_audio_track(seg_audio_pairs, duration, dubbed_wav)
+        build_audio_track(seg_audio_pairs, duration, dubbed_wav, bgm_path=bgm_path, bgm_volume=bgm_volume)
         mux_video_audio(video_path, dubbed_wav, output_path)
 
+        # ── 5a. Copy Audio-Only
+        audio_out = output_path.replace(".mp4", ".wav")
+        import shutil
+        shutil.copy(dubbed_wav, audio_out)
+
         # ── 5b. BURN SUBTITLES onto dubbed video
+        final_video_path = output_path
         if burn_subs and srt_path and os.path.exists(srt_path):
             subtitled_out  = output_path.replace(".mp4", "_subtitled.mp4")
             subtitled_path = burn_subtitles(video_path=output_path,
                                             srt_path=srt_path,
-                                            output_path=subtitled_out)
+                                            output_path=subtitled_out,
+                                            font_size=sub_font_size,
+                                            font_color=sub_font_color,
+                                            bg_color=sub_bg_color)
+            final_video_path = subtitled_path
+
+        # ── 5c. WATERMARK
+        if watermark_path and os.path.exists(watermark_path):
+            watermarked_out = final_video_path.replace(".mp4", "_wm.mp4")
+            final_video_path = add_watermark(final_video_path, watermark_path, watermarked_out)
+            
+        if final_video_path != output_path:
+            shutil.copy(final_video_path, output_path)
+            if subtitled_path:
+                subtitled_path = final_video_path
 
     log.info(f"✅ Done! Output: {output_path}")
     return DubResult(
@@ -520,6 +623,7 @@ def dub_video(
         segment_count     = len(segments),
         srt_path          = srt_path,
         subtitled_video   = subtitled_path,
+        audio_path        = audio_out,
     )
 
 
