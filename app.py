@@ -10,9 +10,13 @@ import re
 import tempfile
 import time
 import subprocess
+import shutil
 from pathlib import Path
 
 import streamlit as st
+import db
+
+db.init_db()
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -114,6 +118,12 @@ with st.sidebar:
     st.markdown("### ✨ Features")
     do_autofit   = st.toggle("⏱️ Auto-fit timing",    value=True,
                               help="Stretch/compress TTS audio to match original segment duration")
+                              
+    translation_context = st.text_area(
+        "🧠 Translation Context (Optional)", 
+        help="Give the AI a hint about the video's topic to improve translation accuracy. E.g., 'A technical tutorial about coding in Python'."
+    )
+    
     do_subtitles = st.toggle("📝 Burn subtitles",     value=True,
                               help="Burn translated text onto the video")
     if do_subtitles:
@@ -270,7 +280,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                  speaker: str, stem: str,
                  autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
                  bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
-                 watermark_path: str):
+                 watermark_path: str, translation_context: str):
     from pipeline import dub_video
 
     with tempfile.TemporaryDirectory(prefix="sarvam_out_") as outdir:
@@ -305,6 +315,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         sub_font_color=sub_font_color,
                         sub_bg_color=sub_bg_color,
                         watermark_path=watermark_path,
+                        translation_context=translation_context,
                     )
                     elapsed = time.time() - t0
 
@@ -334,6 +345,33 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                     if result.srt_path and os.path.exists(result.srt_path):
                         with open(result.srt_path, "r", encoding="utf-8") as sf:
                             srt_content = sf.read()
+
+                    # Copy to persistent output
+                    persistent_dir = os.path.abspath("output")
+                    os.makedirs(persistent_dir, exist_ok=True)
+                    
+                    final_video = result.subtitled_video or result.output_video
+                    p_video = os.path.join(persistent_dir, os.path.basename(final_video)) if final_video else ""
+                    if final_video and os.path.exists(final_video):
+                        shutil.copy2(final_video, p_video)
+                        
+                    p_audio = os.path.join(persistent_dir, os.path.basename(result.audio_path)) if result.audio_path else ""
+                    if result.audio_path and os.path.exists(result.audio_path):
+                        shutil.copy2(result.audio_path, p_audio)
+                        
+                    p_srt = os.path.join(persistent_dir, os.path.basename(result.srt_path)) if result.srt_path else ""
+                    if result.srt_path and os.path.exists(result.srt_path):
+                        shutil.copy2(result.srt_path, p_srt)
+                        
+                    # Save to DB
+                    db.save_job(
+                        video_name=stem, 
+                        source_lang=src, 
+                        target_lang=lang_code, 
+                        video_path=p_video, 
+                        audio_path=p_audio, 
+                        srt_path=p_srt
+                    )
 
                     all_results.append({
                         "lang_code": lang_code, "lang_name": lang_name,
@@ -384,7 +422,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab_upload, tab_youtube = st.tabs(["📁 Upload Video", "▶️ YouTube URL"])
+tab_upload, tab_youtube, tab_dashboard = st.tabs(["📁 Upload Video", "▶️ YouTube URL", "📊 Dashboard"])
 
 # ── TAB 1: Upload ─────────────────────────────────────────────────────────────
 with tab_upload:
@@ -455,7 +493,7 @@ with tab_upload:
                     Path(uploaded.name).stem,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
+                    sub_bg_color=sub_bg_color, watermark_path=wm_path, translation_context=translation_context,
                 )
             finally:
                 if os.path.exists(tmp_path): os.unlink(tmp_path)
@@ -593,8 +631,36 @@ with tab_youtube:
                     yt_out, selected_yt, source_lang, speaker, safe_title,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
+                    sub_bg_color=sub_bg_color, watermark_path=wm_path, translation_context=translation_context,
                 )
                 
                 if wm_path and os.path.exists(wm_path):
                     os.unlink(wm_path)
+
+# ── TAB 3: Dashboard ──────────────────────────────────────────────────────────
+with tab_dashboard:
+    st.markdown("#### 📊 Processing History")
+    history = db.get_history()
+    
+    if not history:
+        st.info("No videos have been dubbed yet. Your history will appear here.")
+    else:
+        for job in history:
+            with st.expander(f"🎬 {job['video_name']} ({job['source_lang']} → {job['target_lang']}) - {job['timestamp']}", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    if job['video_path'] and os.path.exists(job['video_path']):
+                        st.video(job['video_path'])
+                        with open(job['video_path'], "rb") as f:
+                            st.download_button("⬇️ Download Video", data=f.read(), file_name=os.path.basename(job['video_path']), mime="video/mp4", key=f"dl_v_{job['id']}")
+                    else:
+                        st.warning("Video file not found.")
+                with col2:
+                    if job['audio_path'] and os.path.exists(job['audio_path']):
+                        st.audio(job['audio_path'])
+                        with open(job['audio_path'], "rb") as f:
+                            st.download_button("⬇️ Download Audio", data=f.read(), file_name=os.path.basename(job['audio_path']), mime="audio/wav", key=f"dl_a_{job['id']}")
+                    
+                    if job['srt_path'] and os.path.exists(job['srt_path']):
+                        with open(job['srt_path'], "rb") as f:
+                            st.download_button("⬇️ Download Subtitles", data=f.read(), file_name=os.path.basename(job['srt_path']), mime="text/plain", key=f"dl_s_{job['id']}")

@@ -7,3 +7,4 @@ __pycache__/
 .checkpoint/
 output/
 .DS_Store
+history.db
