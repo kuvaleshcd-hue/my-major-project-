@@ -23,6 +23,16 @@ Creators, educators, and businesses need a way to reach regional audiences witho
 
 ---
 
+## ✨ Features Added Post-Hackathon
+- **✂️ Video Trimming:** Select a specific start and end timestamp to dub only a portion of the video, saving API costs and processing time.
+- **🔊 BGM Volume Control:** Retain the original background music using Demucs AI, and precisely control its volume with a slider to prevent it from overpowering the dubbed voices.
+- **🎵 Audio-Only Export:** Automatically generates and provides a `.wav` download link of just the dubbed audio.
+- **🎨 Custom Subtitle Styling:** Full control over the burned-in subtitles, including adjustable font size, text color, and background color.
+- **📺 Resolution Selection:** Download and dub YouTube videos in specific resolutions (360p, 480p, 720p, 1080p, or Best) to optimize processing speed and quality.
+- **🖼️ Watermark Overlay:** Upload a custom logo to automatically overlay a watermark in the top-right corner of the final dubbed video.
+
+---
+
 ## ⚡ What Was Built at the Hackathon
 
 | Component | Before (Old Stack) | After (Sarvam-Native) |
