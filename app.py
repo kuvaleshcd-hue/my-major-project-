@@ -33,17 +33,17 @@ st.markdown("""
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
   html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
   .hero {
-    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    background: linear-gradient(135deg, #f97316, #ea580c);
     border-radius: 16px; padding: 2.2rem 2rem;
     margin-bottom: 1.5rem; text-align: center; color: white;
   }
   .hero h1 { font-size: 2.2rem; font-weight: 700; margin: 0; }
-  .hero p  { font-size: 0.95rem; opacity: 0.75; margin: 0.4rem 0 0; }
+  .hero p  { font-size: 0.95rem; opacity: 0.9; margin: 0.4rem 0 0; }
   .pipeline-row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:1rem; }
   .badge {
-    background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
     border-radius: 20px; padding: 4px 14px;
-    font-size: 0.76rem; color: #e0e0ff; font-weight: 500;
+    font-size: 0.76rem; color: #ffffff; font-weight: 500;
   }
   .feature-badge {
     background: #f0fdf4; border: 1px solid #86efac;
