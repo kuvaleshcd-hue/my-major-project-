@@ -1,8 +1,12 @@
 import sqlite3
 import os
 from datetime import datetime
+import hashlib
 
 DB_FILE = "history.db"
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -19,8 +23,36 @@ def init_db():
             srt_path TEXT
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            password_hash TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
+
+def create_user(username: str, password: str) -> bool:
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    try:
+        c.execute('INSERT INTO users (username, password_hash) VALUES (?, ?)', (username, hash_password(password)))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+def verify_user(username: str, password: str) -> bool:
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('SELECT password_hash FROM users WHERE username = ?', (username,))
+    row = c.fetchone()
+    conn.close()
+    if row and row[0] == hash_password(password):
+        return True
+    return False
 
 def save_job(video_name: str, source_lang: str, target_lang: str, video_path: str, audio_path: str, srt_path: str):
     conn = sqlite3.connect(DB_FILE)
