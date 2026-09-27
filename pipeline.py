@@ -179,7 +179,6 @@ def translate_segments(
     segments: list[TimedSegment],
     source_lang: str,
     target_lang: str,
-    context: str = None,
 ) -> list[TimedSegment]:
     log.info(f"[MAYURA] {len(segments)} segments: {source_lang} → {target_lang}")
     if source_lang == target_lang:
@@ -194,9 +193,6 @@ def translate_segments(
             "target_language_code": target_lang,
             "model": "sarvam-translate:v1",
         }
-        if context:
-            kwargs["prompt"] = context
-            
         resp = client.text.translate(**kwargs)
         log.info(f"  [{i+1}/{len(segments)}] {seg.text[:40]!r} → {resp.translated_text[:40]!r}")
         translated.append(TimedSegment(
@@ -591,7 +587,6 @@ def dub_video(
     sub_font_color: str = "#FFFFFF",
     sub_bg_color:   str = "#000000",
     watermark_path: Optional[str] = None,
-    translation_context: Optional[str] = None,
 ) -> DubResult:
     """
     Full pipeline: video in → dubbed video (+ optional SRT + subtitled video).
@@ -605,7 +600,6 @@ def dub_video(
         autofit     : Stretch/compress TTS audio to fit original timing.
         burn_subs   : Burn translated subtitles onto output video.
         export_srt  : Write .srt file alongside output video.
-        translation_context: Context hint to improve translation accuracy.
     """
     api_key = os.getenv("SARVAM_API_KEY")
     if not api_key:
@@ -644,7 +638,7 @@ def dub_video(
         if src == target_lang:
             src = "en-IN" if target_lang != "en-IN" else "hi-IN"
 
-        translated_segments = translate_segments(client, segments, src, target_lang, context=translation_context)
+        translated_segments = translate_segments(client, segments, src, target_lang)
         full_translated     = " ".join(s.text for s in translated_segments)
 
         # ── 4. TTS
