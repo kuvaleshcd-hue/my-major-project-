@@ -329,14 +329,11 @@ def export_srt(
     return output_path
 
 
-def hex_to_bgr(hex_color: str, alpha: str = "00") -> str:
-    """Convert #RRGGBB to FFmpeg &H{alpha}BBGGRR"""
+def hex_to_rgb(hex_color: str) -> tuple:
     hex_color = hex_color.lstrip("#")
     if len(hex_color) != 6:
-        return f"&H{alpha}FFFFFF"
-    r, g, b = hex_color[0:2], hex_color[2:4], hex_color[4:6]
-    return f"&H{alpha}{b}{g}{r}"
-
+        return (255, 255, 255)
+    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
 def burn_subtitles(
     video_path: str,
@@ -347,40 +344,117 @@ def burn_subtitles(
     bg_color: str = "#000000",
 ) -> str:
     """
-    Burn translated subtitles onto the video using FFmpeg subtitles filter.
-    Returns path to subtitled video.
+    Burn translated subtitles onto the video using Python (OpenCV + PIL).
+    (Fallback since Mac's Homebrew FFmpeg might lack the subtitles filter)
     """
-    log.info(f"[SUBS] Burning subtitles onto {video_path}")
-
-    # Escape path for FFmpeg subtitles filter (colons and backslashes)
-    srt_escaped = srt_path.replace("\\", "/").replace(":", "\\:")
+    log.info(f"[SUBS] Burning subtitles onto {video_path} using Python...")
     
-    primary_col = hex_to_bgr(font_color, alpha="00")
-    back_col = hex_to_bgr(bg_color, alpha="80")
-
-    subtitle_filter = (
-        f"subtitles='{srt_escaped}'"
-        f":force_style='FontSize={font_size},"
-        f"PrimaryColour={primary_col},"
-        f"OutlineColour=&H00000000,"
-        f"BackColour={back_col},"
-        f"BorderStyle=3,"
-        f"Outline=1,"
-        f"Shadow=0,"
-        f"Alignment=2'"
-    )
-
+    try:
+        import cv2
+        from PIL import Image, ImageDraw, ImageFont
+        import numpy as np
+        import pysubs2
+        import shutil
+        import os
+    except ImportError:
+        log.warning("[SUBS] Missing dependencies (opencv-python, Pillow, pysubs2). Skipping burn.")
+        return video_path
+        
+    subs = pysubs2.load(srt_path)
+    
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        log.warning("[SUBS] Could not open video.")
+        return video_path
+        
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps <= 0: fps = 25.0
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
     cmd = [
         "ffmpeg", "-y",
-        "-i", video_path,
-        "-vf", subtitle_filter,
+        "-f", "rawvideo",
+        "-vcodec", "rawvideo",
+        "-s", f"{width}x{height}",
+        "-pix_fmt", "bgr24",
+        "-r", str(fps),
+        "-i", "-",          
+        "-i", video_path,   
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-preset", "fast",
         "-c:a", "copy",
-        output_path,
+        "-map", "0:v:0",
+        "-map", "1:a:0?",
+        "-shortest",
+        output_path
     ]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0:
-        log.warning(f"[SUBS] Subtitle burn failed: {r.stderr[:300]}")
-        return video_path   # fallback: return un-subtitled video
+    
+    process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    
+    font_path = "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
+    if not os.path.exists(font_path):
+        font_path = "/System/Library/Fonts/Helvetica.ttc"
+    
+    try:
+        font = ImageFont.truetype(font_path, font_size)
+    except:
+        font = ImageFont.load_default()
+        
+    fg_rgb = hex_to_rgb(font_color)
+    bg_rgb = hex_to_rgb(bg_color) + (180,)
+    
+    frame_idx = 0
+    sub_idx = 0
+    total_subs = len(subs)
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+            
+        t_ms = (frame_idx / fps) * 1000.0
+        
+        while sub_idx < total_subs and subs[sub_idx].end < t_ms:
+            sub_idx += 1
+            
+        active_text = None
+        if sub_idx < total_subs and subs[sub_idx].start <= t_ms <= subs[sub_idx].end:
+            active_text = subs[sub_idx].text.replace('\\N', '\n').replace('\n', ' ')
+            
+        if active_text:
+            pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert("RGBA")
+            draw = ImageDraw.Draw(pil_img, "RGBA")
+            
+            bbox = draw.textbbox((0, 0), active_text, font=font)
+            txt_w = bbox[2] - bbox[0]
+            txt_h = bbox[3] - bbox[1]
+            
+            x = (width - txt_w) // 2
+            y = height - txt_h - 40
+            
+            draw.rectangle([x-10, y-10, x+txt_w+10, y+txt_h+10], fill=bg_rgb)
+            draw.text((x, y), active_text, font=font, fill=fg_rgb + (255,))
+            
+            frame = cv2.cvtColor(np.array(pil_img.convert("RGB")), cv2.COLOR_RGB2BGR)
+            
+        try:
+            process.stdin.write(frame.tobytes())
+        except Exception:
+            break
+            
+        frame_idx += 1
+        
+    cap.release()
+    if process.stdin:
+        process.stdin.close()
+    process.wait()
+    
+    if process.returncode != 0:
+        log.warning(f"[SUBS] Python subtitle burn failed with FFmpeg exit code {process.returncode}")
+        return video_path
+        
     log.info(f"[SUBS] Done → {output_path}")
     return output_path
 
