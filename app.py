@@ -1,5 +1,5 @@
 """
-app.py — Sarvam Multi-Language Video Dubber
+app.py — Zivana · Multi-Language Video Dubber
 Tabs: 📁 Upload Video | 🎬 YouTube URL
 Features: Auto-fit timing | Subtitle overlay | SRT export
 Run: streamlit run app.py
@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 st.set_page_config(
-    page_title="Sarvam VideoDubber",
+    page_title="Zivana",
     page_icon="🎙️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -68,7 +68,7 @@ st.markdown("""
 
 st.markdown("""
 <div class="hero">
-  <h1>🎙️ Sarvam VideoDubber</h1>
+  <h1>🎙️ Zivana</h1>
   <p>Dub any video into Indian languages — upload a file or paste a YouTube URL.</p>
   <div class="pipeline-row">
     <span class="badge">🎤 Saaras v3 · STT</span>

@@ -1,5 +1,5 @@
 """
-login.py — Premium login page for Sarvam VideoDubber
+login.py — Premium login page for Zivana
 Supports:
   1. Google OAuth via Streamlit's native st.login() / st.user  (requires Streamlit ≥ 1.42)
   2. Username / password via local SQLite (db.py)
@@ -321,7 +321,7 @@ def show_login_page():
         subtitle = (
             "Sign in to continue dubbing videos"
             if st.session_state["login_mode"] == "login"
-            else "Get started with Sarvam VideoDubber"
+            else "Get started with Zivana"
         )
         st.markdown(f"""
         <div class="glass-card">
@@ -388,7 +388,7 @@ def _login_form():
         st.session_state["login_mode"] = "signup"
         st.rerun()
 
-    st.markdown('<div class="login-footer">⚡ Powered by Sarvam AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-footer">⚡ Powered by Zivana</div>', unsafe_allow_html=True)
 
 
 def _signup_form():
@@ -418,7 +418,7 @@ def _signup_form():
         st.session_state["login_mode"] = "login"
         st.rerun()
 
-    st.markdown('<div class="login-footer">⚡ Powered by Sarvam AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-footer">⚡ Powered by Zivana</div>', unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

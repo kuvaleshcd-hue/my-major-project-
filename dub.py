@@ -60,7 +60,7 @@ Supported target languages:
         print(f"   Supported: {', '.join(SUPPORTED_LANGUAGES.keys())}")
         sys.exit(1)
 
-    print(f"\n🎬  Sarvam VideoDubber")
+    print(f"\n🎬  Zivana")
     print(f"    Input  : {args.video}")
     print(f"    Target : {SUPPORTED_LANGUAGES[args.lang]} ({args.lang})")
     print(f"    Source : {args.source or 'auto-detect'}")
