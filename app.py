@@ -15,6 +15,7 @@ from pathlib import Path
 
 import streamlit as st
 import db
+import login
 
 db.init_db()
 from dotenv import load_dotenv
@@ -27,6 +28,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── Login gate ─────────────────────────────────────────────────────────────────
+if not login.show_login_page():
+    st.stop()
 
 st.markdown("""
 <style>
@@ -84,6 +89,17 @@ st.markdown("""
 from pipeline import SUPPORTED_LANGUAGES, DEFAULT_SPEAKER
 
 with st.sidebar:
+    # ── User info & logout ─────────────────────────────────────────
+    sidebar_col1, sidebar_col2 = st.columns([2, 1])
+    with sidebar_col1:
+        st.markdown(f"👋 **{st.session_state.get('username', 'User')}**")
+    with sidebar_col2:
+        if st.button("Logout", key="logout_btn", type="secondary"):
+            st.session_state["authenticated"] = False
+            st.session_state["username"] = ""
+            st.rerun()
+    st.divider()
+
     st.markdown("### ⚙️ Settings")
     env_key = os.getenv("SARVAM_API_KEY", "")
     api_key = st.text_input(
@@ -119,11 +135,6 @@ with st.sidebar:
     do_autofit   = st.toggle("⏱️ Auto-fit timing",    value=True,
                               help="Stretch/compress TTS audio to match original segment duration")
                               
-    translation_context = st.text_area(
-        "🧠 Translation Context (Optional)", 
-        help="Give the AI a hint about the video's topic to improve translation accuracy. E.g., 'A technical tutorial about coding in Python'."
-    )
-    
     do_subtitles = st.toggle("📝 Burn subtitles",     value=True,
                               help="Burn translated text onto the video")
     if do_subtitles:
@@ -280,7 +291,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                  speaker: str, stem: str,
                  autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
                  bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
-                 watermark_path: str, translation_context: str):
+                 watermark_path: str):
     from pipeline import dub_video
 
     with tempfile.TemporaryDirectory(prefix="sarvam_out_") as outdir:
@@ -315,7 +326,6 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         sub_font_color=sub_font_color,
                         sub_bg_color=sub_bg_color,
                         watermark_path=watermark_path,
-                        translation_context=translation_context,
                     )
                     elapsed = time.time() - t0
 
@@ -493,7 +503,7 @@ with tab_upload:
                     Path(uploaded.name).stem,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, watermark_path=wm_path, translation_context=translation_context,
+                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
                 )
             finally:
                 if os.path.exists(tmp_path): os.unlink(tmp_path)
@@ -631,7 +641,7 @@ with tab_youtube:
                     yt_out, selected_yt, source_lang, speaker, safe_title,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, watermark_path=wm_path, translation_context=translation_context,
+                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
                 )
                 
                 if wm_path and os.path.exists(wm_path):
