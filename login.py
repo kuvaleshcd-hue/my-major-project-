@@ -1,11 +1,17 @@
 """
-login.py — Beautiful login / signup page for Sarvam VideoDubber
-Uses the existing db.create_user / db.verify_user functions.
+login.py — Premium login page for Sarvam VideoDubber
+Supports:
+  1. Google OAuth via Streamlit's native st.login() / st.user  (requires Streamlit ≥ 1.42)
+  2. Username / password via local SQLite (db.py)
 """
 
 import streamlit as st
 import db
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CSS & BACKGROUND
+# ═══════════════════════════════════════════════════════════════════════════════
 
 def _inject_login_css():
     """Inject the full-page login styling."""
@@ -116,9 +122,6 @@ def _inject_login_css():
     .login-divider span { padding: 0 12px; }
 
     /* ── Streamlit input overrides (dark theme) ───────────────────── */
-    .glass-card input[type="text"],
-    .glass-card input[type="password"],
-    .glass-card input[type="email"],
     div[data-testid="stTextInput"] input {
         background: rgba(15, 23, 42, 0.5) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -139,7 +142,6 @@ def _inject_login_css():
     }
 
     /* ── Primary button ───────────────────────────────────────────── */
-    .glass-card button[kind="primary"],
     div[data-testid="stButton"] button[kind="primary"] {
         background: #6366f1 !important;
         color: white !important;
@@ -170,22 +172,43 @@ def _inject_login_css():
         border-color: rgba(255,255,255,0.2) !important;
     }
 
+    /* ── Google button ────────────────────────────────────────────── */
+    .google-btn-wrapper {
+        display: flex;
+        justify-content: center;
+        margin: 8px 0;
+    }
+    .google-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #ffffff;
+        color: #3c4043;
+        border: 1px solid #dadce0;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 15px;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+        justify-content: center;
+    }
+    .google-btn:hover {
+        background: #f8f9fa;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .google-btn img {
+        width: 20px; height: 20px;
+    }
+
     /* ── Toggle text link ─────────────────────────────────────────── */
     .toggle-link {
         text-align: center;
         font-size: 14px;
         color: #94a3b8;
         margin-top: 24px;
-    }
-    .toggle-link a, .toggle-link span.link {
-        color: #6366f1;
-        font-weight: 500;
-        cursor: pointer;
-        text-decoration: none;
-    }
-    .toggle-link a:hover, .toggle-link span.link:hover {
-        color: #818cf8;
-        text-decoration: underline;
     }
 
     /* ── Alerts ────────────────────────────────────────────────────── */
@@ -200,6 +223,19 @@ def _inject_login_css():
         font-size: 12px;
         color: #475569;
         margin-top: 24px;
+    }
+
+    /* ── OAuth info box ───────────────────────────────────────────── */
+    .oauth-info {
+        background: rgba(99, 102, 241, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #a5b4fc;
+        text-align: center;
+        margin-top: 12px;
+        line-height: 1.5;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -216,28 +252,78 @@ def _render_background():
     """, unsafe_allow_html=True)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# FEATURE DETECTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _has_native_oauth():
+    """Check if Streamlit version supports native st.login() / st.user."""
+    return hasattr(st, "login") and hasattr(st, "user")
+
+
+def _google_oauth_configured():
+    """Check if Google OAuth credentials are set in secrets."""
+    try:
+        secrets = st.secrets
+        return (
+            "auth" in secrets
+            and "google" in secrets.get("auth", {})
+            and secrets["auth"]["google"].get("client_id")
+        )
+    except Exception:
+        return False
+
+
+def _is_google_logged_in():
+    """Check if user is logged in via Google OAuth (native Streamlit)."""
+    if not _has_native_oauth():
+        return False
+    try:
+        return st.user.is_logged_in
+    except Exception:
+        return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MAIN ENTRY POINT
+# ═══════════════════════════════════════════════════════════════════════════════
+
 def show_login_page():
     """
-    Display a premium login / signup page.
-    Returns True when the user is authenticated, False otherwise.
-    Sets st.session_state["authenticated"] and st.session_state["username"].
+    Display the login page. Returns True when user is authenticated.
+    Supports:
+      - Google OAuth (if Streamlit ≥ 1.42 + credentials configured)
+      - Username / password (SQLite via db.py — always available)
     """
-    # Already logged in?
+    # ── Already authenticated via session (username/password) ────
     if st.session_state.get("authenticated"):
         return True
 
+    # ── Already authenticated via Google OAuth ───────────────────
+    if _is_google_logged_in():
+        st.session_state["authenticated"] = True
+        st.session_state["username"] = st.user.email
+        st.session_state["auth_method"] = "google"
+        return True
+
+    # ── Show login page ──────────────────────────────────────────
     _inject_login_css()
     _render_background()
 
-    # Track which form to show
     if "login_mode" not in st.session_state:
         st.session_state["login_mode"] = "login"
 
-    # ── Centered card container ──────────────────────────────────────
     _, center, _ = st.columns([1, 1.3, 1])
 
     with center:
-        st.markdown("""
+        # ── Brand header ─────────────────────────────────────────
+        title = "Welcome Back" if st.session_state["login_mode"] == "login" else "Create Account"
+        subtitle = (
+            "Sign in to continue dubbing videos"
+            if st.session_state["login_mode"] == "login"
+            else "Get started with Sarvam VideoDubber"
+        )
+        st.markdown(f"""
         <div class="glass-card">
             <div class="login-brand">
                 <div class="logo">🎙️</div>
@@ -245,14 +331,27 @@ def show_login_page():
                 <p>{subtitle}</p>
             </div>
         </div>
-        """.format(
-            title="Welcome Back" if st.session_state["login_mode"] == "login" else "Create Account",
-            subtitle="Sign in to continue dubbing videos"
-            if st.session_state["login_mode"] == "login"
-            else "Get started with Sarvam VideoDubber",
-        ), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-        # ── Form ─────────────────────────────────────────────────
+        # ── Google OAuth button (if available) ───────────────────
+        google_available = _has_native_oauth() and _google_oauth_configured()
+
+        if google_available:
+            st.markdown("")
+            if st.button("🔵  Continue with Google", use_container_width=True, type="primary", key="google_login_btn"):
+                st.login("google")
+            st.markdown('<div class="login-divider"><span>or sign in with username</span></div>', unsafe_allow_html=True)
+        elif _has_native_oauth() and not _google_oauth_configured():
+            # Streamlit supports OAuth but credentials not configured — show hint
+            st.markdown("""
+            <div class="oauth-info">
+                💡 <b>Google OAuth available!</b> Add credentials to
+                <code>.streamlit/secrets.toml</code> to enable "Sign in with Google".
+            </div>
+            """, unsafe_allow_html=True)
+            st.markdown("")
+
+        # ── Username / password form ─────────────────────────────
         if st.session_state["login_mode"] == "login":
             _login_form()
         else:
@@ -261,12 +360,15 @@ def show_login_page():
     return st.session_state.get("authenticated", False)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# FORMS
+# ═══════════════════════════════════════════════════════════════════════════════
+
 def _login_form():
     """Render the sign-in form."""
     with st.form("login_form", clear_on_submit=False):
         username = st.text_input("Username", placeholder="Enter your username", key="login_user")
         password = st.text_input("Password", placeholder="Enter your password", type="password", key="login_pass")
-
         submitted = st.form_submit_button("Sign In", type="primary", use_container_width=True)
 
     if submitted:
@@ -275,12 +377,12 @@ def _login_form():
         elif db.verify_user(username, password):
             st.session_state["authenticated"] = True
             st.session_state["username"] = username
+            st.session_state["auth_method"] = "password"
             st.balloons()
             st.rerun()
         else:
             st.error("❌ Invalid username or password.")
 
-    # Toggle to signup
     st.markdown("")
     if st.button("Don't have an account? **Sign up**", use_container_width=True, type="secondary", key="go_signup"):
         st.session_state["login_mode"] = "signup"
@@ -295,7 +397,6 @@ def _signup_form():
         new_user = st.text_input("Username", placeholder="Choose a username", key="signup_user")
         new_pass = st.text_input("Password", placeholder="Create a password", type="password", key="signup_pass")
         confirm  = st.text_input("Confirm Password", placeholder="Re-enter password", type="password", key="signup_confirm")
-
         submitted = st.form_submit_button("Create Account", type="primary", use_container_width=True)
 
     if submitted:
@@ -312,10 +413,31 @@ def _signup_form():
         else:
             st.error("❌ Username already exists. Choose a different one.")
 
-    # Toggle to login
     st.markdown("")
     if st.button("Already have an account? **Sign in**", use_container_width=True, type="secondary", key="go_login"):
         st.session_state["login_mode"] = "login"
         st.rerun()
 
     st.markdown('<div class="login-footer">⚡ Powered by Sarvam AI</div>', unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LOGOUT HELPER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def do_logout():
+    """Log out the user — handles both Google OAuth and password auth."""
+    auth_method = st.session_state.get("auth_method", "password")
+
+    st.session_state["authenticated"] = False
+    st.session_state["username"] = ""
+    st.session_state["auth_method"] = ""
+
+    # If logged in via Google, also call st.logout()
+    if auth_method == "google" and _has_native_oauth():
+        try:
+            st.logout()
+        except Exception:
+            pass
+
+    st.rerun()

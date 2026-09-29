@@ -92,12 +92,13 @@ with st.sidebar:
     # ── User info & logout ─────────────────────────────────────────
     sidebar_col1, sidebar_col2 = st.columns([2, 1])
     with sidebar_col1:
-        st.markdown(f"👋 **{st.session_state.get('username', 'User')}**")
+        username = st.session_state.get('username', 'User')
+        auth_method = st.session_state.get('auth_method', 'password')
+        badge = "🔵 Google" if auth_method == "google" else "🔑 Local"
+        st.markdown(f"👋 **{username}**  \n<small>{badge}</small>", unsafe_allow_html=True)
     with sidebar_col2:
         if st.button("Logout", key="logout_btn", type="secondary"):
-            st.session_state["authenticated"] = False
-            st.session_state["username"] = ""
-            st.rerun()
+            login.do_logout()
     st.divider()
 
     st.markdown("### ⚙️ Settings")

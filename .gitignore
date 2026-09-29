@@ -8,3 +8,4 @@ __pycache__/
 output/
 .DS_Store
 history.db
+.streamlit/secrets.toml
