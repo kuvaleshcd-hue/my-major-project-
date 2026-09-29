@@ -14,7 +14,7 @@ import db
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _inject_login_css():
-    """Inject the full-page login styling."""
+    """Inject the full-page login styling — white & orange theme."""
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -24,13 +24,13 @@ def _inject_login_css():
     [data-testid="stSidebar"] { display: none; }
     [data-testid="stToolbar"] { display: none; }
 
-    /* ── Full-page background ─────────────────────────────────────── */
+    /* ── Full-page background (clean white) ───────────────────────── */
     .stApp {
-        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #0f172a 100%);
+        background: linear-gradient(160deg, #ffffff 0%, #FFF7ED 40%, #FFEDD5 100%) !important;
         overflow: hidden;
     }
 
-    /* ── Animated floating shapes ─────────────────────────────────── */
+    /* ── Animated floating shapes (orange tones) ─────────────────── */
     .login-bg {
         position: fixed; inset: 0; z-index: 0;
         pointer-events: none; overflow: hidden;
@@ -38,42 +38,62 @@ def _inject_login_css():
     .login-bg .orb {
         position: absolute;
         border-radius: 50%;
-        filter: blur(80px);
+        filter: blur(90px);
         animation: orb-float 12s ease-in-out infinite alternate;
     }
     .login-bg .orb-1 {
         width: 420px; height: 420px;
-        background: rgba(99, 102, 241, 0.35);
+        background: rgba(249, 115, 22, 0.22);
         top: -80px; left: -60px;
     }
     .login-bg .orb-2 {
         width: 500px; height: 500px;
-        background: rgba(236, 72, 153, 0.25);
+        background: rgba(251, 146, 60, 0.18);
         bottom: -120px; right: -80px;
         animation-delay: -3s;
     }
     .login-bg .orb-3 {
         width: 300px; height: 300px;
-        background: rgba(6, 182, 212, 0.25);
+        background: rgba(234, 88, 12, 0.14);
         top: 45%; left: 55%;
         animation-delay: -6s;
+    }
+    .login-bg .orb-4 {
+        width: 250px; height: 250px;
+        background: rgba(253, 186, 116, 0.20);
+        top: 10%; right: 15%;
+        animation-delay: -8s;
     }
     @keyframes orb-float {
         0%   { transform: translate(0, 0) scale(1); }
         100% { transform: translate(30px, -40px) scale(1.08); }
     }
 
-    /* ── Glass card ───────────────────────────────────────────────── */
+    /* ── Decorative top bar accent ────────────────────────────────── */
+    .glass-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        height: 4px;
+        background: linear-gradient(90deg, #FB923C, #F97316, #EA580C);
+        border-radius: 0 0 4px 4px;
+    }
+
+    /* ── Glass card (white frost) ─────────────────────────────────── */
     .glass-card {
-        background: rgba(30, 41, 59, 0.55);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(249, 115, 22, 0.12);
         border-radius: 24px;
         padding: 48px 40px 40px;
         max-width: 440px;
         margin: 0 auto;
-        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5);
+        box-shadow:
+            0 25px 60px -15px rgba(249, 115, 22, 0.12),
+            0 4px 20px rgba(0, 0, 0, 0.04);
         animation: card-up 0.7s cubic-bezier(0.16, 1, 0.3, 1);
         position: relative;
         z-index: 1;
@@ -96,14 +116,14 @@ def _inject_login_css():
         font-family: 'Inter', sans-serif;
         font-size: 26px;
         font-weight: 700;
-        background: linear-gradient(to right, #ffffff, #94a3b8);
+        background: linear-gradient(135deg, #EA580C, #F97316, #FB923C);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin: 0 0 4px;
     }
     .login-brand p {
         font-size: 14px;
-        color: #94a3b8;
+        color: #78716c;
         margin: 0;
     }
 
@@ -111,65 +131,69 @@ def _inject_login_css():
     .login-divider {
         display: flex; align-items: center;
         margin: 20px 0 16px;
-        color: #64748b; font-size: 13px;
+        color: #a8a29e; font-size: 13px;
     }
     .login-divider::before,
     .login-divider::after {
         content: '';
         flex: 1;
-        border-bottom: 1px solid rgba(255,255,255,0.08);
+        border-bottom: 1px solid rgba(249, 115, 22, 0.15);
     }
     .login-divider span { padding: 0 12px; }
 
-    /* ── Streamlit input overrides (dark theme) ───────────────────── */
+    /* ── Streamlit input overrides (light / orange theme) ─────────── */
     div[data-testid="stTextInput"] input {
-        background: rgba(15, 23, 42, 0.5) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background: rgba(255, 247, 237, 0.6) !important;
+        border: 1px solid rgba(249, 115, 22, 0.2) !important;
         border-radius: 12px !important;
-        color: #fff !important;
+        color: #1c1917 !important;
         padding: 12px 16px !important;
         font-size: 15px !important;
         transition: border-color 0.25s, box-shadow 0.25s !important;
     }
     div[data-testid="stTextInput"] input:focus {
-        border-color: #6366f1 !important;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+        border-color: #F97316 !important;
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12) !important;
+    }
+    div[data-testid="stTextInput"] input::placeholder {
+        color: #a8a29e !important;
     }
     div[data-testid="stTextInput"] label {
-        color: #cbd5e1 !important;
+        color: #44403c !important;
         font-weight: 500 !important;
         font-size: 14px !important;
     }
 
-    /* ── Primary button ───────────────────────────────────────────── */
+    /* ── Primary button (orange gradient) ─────────────────────────── */
     div[data-testid="stButton"] button[kind="primary"] {
-        background: #6366f1 !important;
+        background: linear-gradient(135deg, #F97316, #EA580C) !important;
         color: white !important;
         border: none !important;
         border-radius: 12px !important;
         padding: 12px !important;
         font-size: 16px !important;
         font-weight: 600 !important;
+        letter-spacing: 0.02em !important;
         transition: all 0.3s !important;
         width: 100% !important;
     }
     div[data-testid="stButton"] button[kind="primary"]:hover {
-        background: #4f46e5 !important;
-        box-shadow: 0 10px 25px -8px rgba(99, 102, 241, 0.45) !important;
+        background: linear-gradient(135deg, #EA580C, #C2410C) !important;
+        box-shadow: 0 10px 25px -8px rgba(249, 115, 22, 0.45) !important;
         transform: translateY(-1px);
     }
 
     /* ── Secondary / link button ──────────────────────────────────── */
     div[data-testid="stButton"] button[kind="secondary"] {
         background: transparent !important;
-        color: #6366f1 !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
+        color: #F97316 !important;
+        border: 1px solid rgba(249, 115, 22, 0.25) !important;
         border-radius: 12px !important;
         transition: all 0.2s !important;
     }
     div[data-testid="stButton"] button[kind="secondary"]:hover {
-        background: rgba(255,255,255,0.04) !important;
-        border-color: rgba(255,255,255,0.2) !important;
+        background: rgba(249, 115, 22, 0.06) !important;
+        border-color: rgba(249, 115, 22, 0.4) !important;
     }
 
     /* ── Google button ────────────────────────────────────────────── */
@@ -184,7 +208,7 @@ def _inject_login_css():
         gap: 10px;
         background: #ffffff;
         color: #3c4043;
-        border: 1px solid #dadce0;
+        border: 1px solid #e7e5e4;
         border-radius: 12px;
         padding: 12px 24px;
         font-size: 15px;
@@ -196,8 +220,8 @@ def _inject_login_css():
         justify-content: center;
     }
     .google-btn:hover {
-        background: #f8f9fa;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        background: #FFFBEB;
+        box-shadow: 0 2px 8px rgba(249, 115, 22, 0.12);
     }
     .google-btn img {
         width: 20px; height: 20px;
@@ -207,7 +231,7 @@ def _inject_login_css():
     .toggle-link {
         text-align: center;
         font-size: 14px;
-        color: #94a3b8;
+        color: #78716c;
         margin-top: 24px;
     }
 
@@ -221,21 +245,27 @@ def _inject_login_css():
     .login-footer {
         text-align: center;
         font-size: 12px;
-        color: #475569;
+        color: #a8a29e;
         margin-top: 24px;
     }
 
     /* ── OAuth info box ───────────────────────────────────────────── */
     .oauth-info {
-        background: rgba(99, 102, 241, 0.08);
-        border: 1px solid rgba(99, 102, 241, 0.2);
+        background: rgba(249, 115, 22, 0.06);
+        border: 1px solid rgba(249, 115, 22, 0.18);
         border-radius: 12px;
         padding: 12px 16px;
         font-size: 13px;
-        color: #a5b4fc;
+        color: #EA580C;
         text-align: center;
         margin-top: 12px;
         line-height: 1.5;
+    }
+
+    /* ── Form container overrides ─────────────────────────────────── */
+    [data-testid="stForm"] {
+        border: none !important;
+        padding: 0 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -248,6 +278,7 @@ def _render_background():
         <div class="orb orb-1"></div>
         <div class="orb orb-2"></div>
         <div class="orb orb-3"></div>
+        <div class="orb orb-4"></div>
     </div>
     """, unsafe_allow_html=True)
 
