@@ -215,7 +215,7 @@ def diarize_audio(audio_path: str, hf_token: str) -> list[tuple[float, float, st
         return []
         
     try:
-        pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token=hf_token)
+        pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", token=hf_token)
         if not pipeline:
             log.warning("[DIARIZATION] Failed to load pyannote pipeline (check token/permissions).")
             return []
