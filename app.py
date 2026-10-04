@@ -156,10 +156,6 @@ with st.sidebar:
         bgm_volume = 0.5
 
     st.divider()
-    st.markdown("### 🖼️ Watermark")
-    watermark_file = st.file_uploader("Upload Logo", type=["png", "jpg"], label_visibility="collapsed")
-
-    st.divider()
     st.markdown("""
     <div style='font-size:0.78rem;color:#888;line-height:1.8'>
     ⚡ <b>Sarvam BuildIn' Hours</b><br>
@@ -291,8 +287,7 @@ def show_result(r: dict, stem: str):
 def run_pipeline(input_path: str, selected: list, source_lang: str,
                  speaker: str, stem: str,
                  autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
-                 bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
-                 watermark_path: str):
+                 bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str):
     from pipeline import dub_video
 
     with tempfile.TemporaryDirectory(prefix="sarvam_out_") as outdir:
@@ -326,7 +321,6 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         sub_font_size=sub_font_size,
                         sub_font_color=sub_font_color,
                         sub_bg_color=sub_bg_color,
-                        watermark_path=watermark_path,
                     )
                     elapsed = time.time() - t0
 
@@ -489,12 +483,6 @@ with tab_upload:
                 tmp.write(uploaded.getbuffer())
                 tmp_path = tmp.name
 
-            wm_path = None
-            if watermark_file:
-                with tempfile.NamedTemporaryFile(suffix=Path(watermark_file.name).suffix, delete=False) as wm_tmp:
-                    wm_tmp.write(watermark_file.getbuffer())
-                    wm_path = wm_tmp.name
-
             if start_time > 0 or end_time > 0:
                 tmp_path = trim_video(tmp_path, start_time, end_time)
 
@@ -504,11 +492,10 @@ with tab_upload:
                     Path(uploaded.name).stem,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
+                    sub_bg_color=sub_bg_color,
                 )
             finally:
                 if os.path.exists(tmp_path): os.unlink(tmp_path)
-                if wm_path and os.path.exists(wm_path): os.unlink(wm_path)
 
 
 # ── TAB 2: YouTube ────────────────────────────────────────────────────────────
@@ -631,23 +618,14 @@ with tab_youtube:
                 if yt_start_time > 0 or yt_end_time > 0:
                     yt_out = trim_video(yt_out, yt_start_time, yt_end_time)
                     
-                wm_path = None
-                if watermark_file:
-                    with tempfile.NamedTemporaryFile(suffix=Path(watermark_file.name).suffix, delete=False) as wm_tmp:
-                        wm_tmp.write(watermark_file.getbuffer())
-                        wm_path = wm_tmp.name
-
                 safe_title = re.sub(r"[^\w\-]", "_", yt_title)[:40]
                 run_pipeline(
                     yt_out, selected_yt, source_lang, speaker, safe_title,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, watermark_path=wm_path,
+                    sub_bg_color=sub_bg_color,
                 )
                 
-                if wm_path and os.path.exists(wm_path):
-                    os.unlink(wm_path)
-
 # ── TAB 3: Dashboard ──────────────────────────────────────────────────────────
 with tab_dashboard:
     st.markdown("#### 📊 Processing History")
