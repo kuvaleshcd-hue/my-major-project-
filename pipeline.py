@@ -60,6 +60,7 @@ class TimedSegment:
     text:  str
     start: float
     end:   float
+    speaker: Optional[str] = None
 
 
 @dataclass
@@ -199,8 +200,80 @@ def translate_segments(
             text=resp.translated_text,
             start=seg.start,
             end=seg.end,
+            speaker=seg.speaker
         ))
     return translated
+
+# ── NEW: Diarization ──────────────────────────────────────────────────────────
+def diarize_audio(audio_path: str, hf_token: str) -> list[tuple[float, float, str]]:
+    """Uses pyannote.audio to detect speakers. Returns list of (start, end, speaker_label)."""
+    log.info("[DIARIZATION] Running Pyannote Diarization...")
+    try:
+        from pyannote.audio import Pipeline
+    except ImportError:
+        log.warning("[DIARIZATION] pyannote.audio not installed.")
+        return []
+        
+    try:
+        pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", use_auth_token=hf_token)
+        if not pipeline:
+            log.warning("[DIARIZATION] Failed to load pyannote pipeline (check token/permissions).")
+            return []
+        diarization = pipeline(audio_path)
+        
+        results = []
+        for turn, _, speaker in diarization.itertracks(yield_label=True):
+            results.append((turn.start, turn.end, speaker))
+        return results
+    except Exception as e:
+        log.error(f"[DIARIZATION] Error: {e}")
+        return []
+
+def assign_speakers_to_segments(
+    segments: list[TimedSegment], 
+    diarization: list[tuple[float, float, str]],
+    default_speaker: str = DEFAULT_SPEAKER
+) -> list[TimedSegment]:
+    """Assigns the best matching Bulbul speaker to each segment based on diarization overlap."""
+    if not diarization:
+        return segments
+        
+    # Find all unique speakers from diarization
+    unique_speakers = list(set(s[2] for s in diarization))
+    
+    # Map pyannote speakers to available Bulbul speakers
+    bulbul_voices = ["shubh","priya","rahul","neha","aditya","ritu","rohan","pooja","amit","kavya"]
+    speaker_map = {}
+    for i, spk in enumerate(unique_speakers):
+        speaker_map[spk] = bulbul_voices[i % len(bulbul_voices)]
+        
+    log.info(f"[DIARIZATION] Mapped speakers: {speaker_map}")
+
+    for seg in segments:
+        seg_mid = (seg.start + seg.end) / 2
+        
+        # Find which diarization turn covers this segment's midpoint
+        best_spk = None
+        for d_start, d_end, spk in diarization:
+            if d_start <= seg_mid <= d_end:
+                best_spk = spk
+                break
+                
+        # If midpoint didn't work, find max overlap
+        if not best_spk:
+            max_overlap = 0
+            for d_start, d_end, spk in diarization:
+                overlap = max(0, min(seg.end, d_end) - max(seg.start, d_start))
+                if overlap > max_overlap:
+                    max_overlap = overlap
+                    best_spk = spk
+                    
+        if best_spk:
+            seg.speaker = speaker_map[best_spk]
+        else:
+            seg.speaker = default_speaker
+            
+    return segments
 
 
 # ── Step 4: TTS — Bulbul v3 ───────────────────────────────────────────────────
@@ -211,14 +284,15 @@ def synthesize_segments(
     speaker: str = DEFAULT_SPEAKER,
     output_dir: str = ".",
 ) -> list[tuple[TimedSegment, str]]:
-    log.info(f"[BULBUL] {len(segments)} segments → {target_lang}, speaker={speaker}")
+    log.info(f"[BULBUL] {len(segments)} segments → {target_lang}")
     results = []
     for i, seg in enumerate(segments):
+        current_speaker = seg.speaker if seg.speaker else speaker
         resp = client.text_to_speech.convert(
             text=seg.text,
             language_code=target_lang,
             model="bulbul:v3",
-            speaker=speaker,
+            speaker=current_speaker,
             speech_sample_rate=24000,
             enable_preprocessing=True,
         )
@@ -587,6 +661,8 @@ def dub_video(
     sub_font_color: str = "#FFFFFF",
     sub_bg_color:   str = "#000000",
     watermark_path: Optional[str] = None,
+    do_diarization: bool = False,
+    hf_token:       Optional[str] = None,
 ) -> DubResult:
     """
     Full pipeline: video in → dubbed video (+ optional SRT + subtitled video).
@@ -632,6 +708,11 @@ def dub_video(
         transcript, segments = transcribe_audio(
             client, audio_wav, source_lang, chunk_dir=tmpdir
         )
+        
+        # ── 2b. DIARIZATION
+        if do_diarization and hf_token:
+            diarization_results = diarize_audio(audio_wav, hf_token)
+            segments = assign_speakers_to_segments(segments, diarization_results, speaker)
 
         # ── 3. Translate
         src = source_lang or "en-IN"

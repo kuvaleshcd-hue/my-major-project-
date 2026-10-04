@@ -136,6 +136,14 @@ with st.sidebar:
     do_autofit   = st.toggle("⏱️ Auto-fit timing",    value=True,
                               help="Stretch/compress TTS audio to match original segment duration")
                               
+    do_diarization = st.toggle("🎭 Multi-Speaker Diarization", value=False,
+                               help="Detect different speakers and assign different voices (requires HF Token)")
+    if do_diarization:
+        hf_token = st.text_input("Hugging Face Token", type="password", placeholder="hf_...",
+                                 help="Requires access to pyannote/speaker-diarization-3.1 on Hugging Face")
+    else:
+        hf_token = None
+                              
     do_subtitles = st.toggle("📝 Burn subtitles",     value=True,
                               help="Burn translated text onto the video")
     if do_subtitles:
@@ -287,7 +295,8 @@ def show_result(r: dict, stem: str):
 def run_pipeline(input_path: str, selected: list, source_lang: str,
                  speaker: str, stem: str,
                  autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
-                 bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str):
+                 bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
+                 do_diarization: bool, hf_token: str):
     from pipeline import dub_video
 
     with tempfile.TemporaryDirectory(prefix="sarvam_out_") as outdir:
@@ -321,6 +330,8 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         sub_font_size=sub_font_size,
                         sub_font_color=sub_font_color,
                         sub_bg_color=sub_bg_color,
+                        do_diarization=do_diarization,
+                        hf_token=hf_token,
                     )
                     elapsed = time.time() - t0
 
@@ -471,6 +482,7 @@ with tab_upload:
             if do_subtitles: feats.append("📝 Subtitles")
             if do_srt:       feats.append("💾 SRT")
             if do_bgm:       feats.append("🎵 BGM")
+            if do_diarization: feats.append("🎭 Diarization")
             st.success(
                 f"Ready → **{', '.join(SUPPORTED_LANGUAGES[l] for l in selected_upload)}**  |  {' · '.join(feats)}",
                 icon="✅",
@@ -492,7 +504,7 @@ with tab_upload:
                     Path(uploaded.name).stem,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color,
+                    sub_bg_color=sub_bg_color, do_diarization=do_diarization, hf_token=hf_token
                 )
             finally:
                 if os.path.exists(tmp_path): os.unlink(tmp_path)
@@ -562,6 +574,7 @@ with tab_youtube:
             if do_subtitles: feats.append("📝 Subtitles")
             if do_srt:       feats.append("💾 SRT")
             if do_bgm:       feats.append("🎵 BGM")
+            if do_diarization: feats.append("🎭 Diarization")
             st.success(
                 f"Ready → **{', '.join(SUPPORTED_LANGUAGES[l] for l in selected_yt)}**  |  {' · '.join(feats)}",
                 icon="✅",
@@ -623,7 +636,7 @@ with tab_youtube:
                     yt_out, selected_yt, source_lang, speaker, safe_title,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color,
+                    sub_bg_color=sub_bg_color, do_diarization=do_diarization, hf_token=hf_token
                 )
                 
 # ── TAB 3: Dashboard ──────────────────────────────────────────────────────────
