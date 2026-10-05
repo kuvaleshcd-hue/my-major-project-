@@ -101,20 +101,7 @@ with st.sidebar:
             login.do_logout()
     st.divider()
 
-    st.markdown("### ⚙️ Settings")
-    env_key = os.getenv("SARVAM_API_KEY", "")
-    api_key = st.text_input(
-        "Sarvam API Key",
-        value=env_key if (env_key and env_key != "your_key_here") else "",
-        type="password", placeholder="sk_...",
-    )
-    if api_key:
-        os.environ["SARVAM_API_KEY"] = api_key
-        st.success("✅ Key loaded", icon="🔑")
-    else:
-        st.warning("Add your API key", icon="⚠️")
 
-    st.divider()
     st.markdown("### 🔊 Voice")
     SPEAKERS = [
         "shubh","aditya","ritu","priya","neha","rahul",
@@ -137,12 +124,8 @@ with st.sidebar:
                               help="Stretch/compress TTS audio to match original segment duration")
                               
     do_diarization = st.toggle("🎭 Multi-Speaker Diarization", value=False,
-                               help="Detect different speakers and assign different voices (requires AssemblyAI API Key)")
-    if do_diarization:
-        aai_api_key = st.text_input("AssemblyAI API Key", type="password", placeholder="sk_...",
-                                 help="Get your free key from assemblyai.com")
-    else:
-        aai_api_key = None
+                               help="Detect different speakers and assign different voices (requires AssemblyAI API Key in .env)")
+    aai_api_key = os.getenv("ASSEMBLYAI_API_KEY", "")
                               
     do_subtitles = st.toggle("📝 Burn subtitles",     value=True,
                               help="Burn translated text onto the video")
