@@ -7,8 +7,14 @@ Supports:
 
 import streamlit as st
 import db
+import smtplib
+from email.mime.text import MIMEText
+import random
 import base64
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_base64_image(image_path):
     if not os.path.exists(image_path):
@@ -400,8 +406,10 @@ def show_login_page():
         # ── Username / password form ─────────────────────────────
         if st.session_state["login_mode"] == "login":
             _login_form()
-        else:
+        elif st.session_state["login_mode"] == "signup":
             _signup_form()
+        else:
+            _otp_login_form()
 
     return st.session_state.get("authenticated", False)
 
@@ -409,6 +417,78 @@ def show_login_page():
 # ═══════════════════════════════════════════════════════════════════════════════
 # FORMS
 # ═══════════════════════════════════════════════════════════════════════════════
+
+def _send_otp_email(recipient_email, otp):
+    sender_email = os.environ.get("SMTP_EMAIL", "")
+    sender_password = os.environ.get("SMTP_PASSWORD", "")
+    
+    if not sender_email or not sender_password:
+        return False, "SMTP credentials not configured in .env"
+        
+    try:
+        msg = MIMEText(f"Your Zivana login OTP is: {otp}\\n\\nThis OTP is valid for your current session.")
+        msg["Subject"] = "Zivana Login OTP"
+        msg["From"] = f"Zivana <{sender_email}>"
+        msg["To"] = recipient_email
+        
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(sender_email, sender_password.replace(" ", ""))
+        server.sendmail(sender_email, recipient_email, msg.as_string())
+        server.quit()
+        return True, "Success"
+    except Exception as e:
+        return False, str(e)
+
+def _otp_login_form():
+    """Render the OTP login form."""
+    if "otp_sent" not in st.session_state:
+        st.session_state["otp_sent"] = False
+        st.session_state["generated_otp"] = ""
+        st.session_state["otp_email"] = ""
+
+    if not st.session_state["otp_sent"]:
+        with st.form("otp_send_form", clear_on_submit=False):
+            email = st.text_input("Email Address", placeholder="Enter your email to receive OTP", key="otp_input_email")
+            submitted = st.form_submit_button("Send OTP", type="primary", use_container_width=True)
+
+        if submitted:
+            if not email or "@" not in email:
+                st.error("Please enter a valid email address.")
+            else:
+                otp = str(random.randint(100000, 999999))
+                with st.spinner("Sending OTP..."):
+                    success, error = _send_otp_email(email, otp)
+                
+                if success:
+                    st.session_state["otp_sent"] = True
+                    st.session_state["generated_otp"] = otp
+                    st.session_state["otp_email"] = email
+                    st.success("✅ OTP sent to your email!")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Failed to send email: {error}")
+    else:
+        st.info(f"OTP sent to {st.session_state['otp_email']}")
+        with st.form("otp_verify_form", clear_on_submit=False):
+            entered_otp = st.text_input("Enter 6-digit OTP", placeholder="123456", key="otp_verify_input")
+            submitted = st.form_submit_button("Verify & Sign In", type="primary", use_container_width=True)
+
+        if submitted:
+            if entered_otp == st.session_state["generated_otp"]:
+                st.session_state["authenticated"] = True
+                st.session_state["username"] = st.session_state["otp_email"]
+                st.session_state["auth_method"] = "otp"
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("❌ Invalid OTP. Please try again.")
+
+    st.markdown("")
+    if st.button("Back to Password Login", use_container_width=True, type="secondary"):
+        st.session_state["login_mode"] = "login"
+        st.session_state["otp_sent"] = False
+        st.rerun()
+    st.markdown('<div class="login-footer">⚡ Powered by Zivana</div>', unsafe_allow_html=True)
 
 def _login_form():
     """Render the sign-in form."""
@@ -430,9 +510,15 @@ def _login_form():
             st.error("❌ Invalid username or password.")
 
     st.markdown("")
-    if st.button("Don't have an account? **Sign up**", use_container_width=True, type="secondary", key="go_signup"):
-        st.session_state["login_mode"] = "signup"
-        st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Sign up", use_container_width=True, type="secondary", key="go_signup"):
+            st.session_state["login_mode"] = "signup"
+            st.rerun()
+    with col2:
+        if st.button("Login via OTP", use_container_width=True, type="secondary", key="go_otp"):
+            st.session_state["login_mode"] = "otp"
+            st.rerun()
 
     st.markdown('<div class="login-footer">⚡ Powered by Zivana</div>', unsafe_allow_html=True)
 
