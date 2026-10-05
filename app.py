@@ -137,12 +137,12 @@ with st.sidebar:
                               help="Stretch/compress TTS audio to match original segment duration")
                               
     do_diarization = st.toggle("🎭 Multi-Speaker Diarization", value=False,
-                               help="Detect different speakers and assign different voices (requires HF Token)")
+                               help="Detect different speakers and assign different voices (requires AssemblyAI API Key)")
     if do_diarization:
-        hf_token = st.text_input("Hugging Face Token", type="password", placeholder="hf_...",
-                                 help="Requires access to pyannote/speaker-diarization-3.1 on Hugging Face")
+        aai_api_key = st.text_input("AssemblyAI API Key", type="password", placeholder="sk_...",
+                                 help="Get your free key from assemblyai.com")
     else:
-        hf_token = None
+        aai_api_key = None
                               
     do_subtitles = st.toggle("📝 Burn subtitles",     value=True,
                               help="Burn translated text onto the video")
@@ -302,7 +302,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                  autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
                  bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
                  sub_font_name: str, sub_position: str,
-                 do_diarization: bool, hf_token: str):
+                 do_diarization: bool, aai_api_key: str):
     from pipeline import dub_video
 
     with tempfile.TemporaryDirectory(prefix="sarvam_out_") as outdir:
@@ -339,7 +339,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         sub_font_name=sub_font_name,
                         sub_position=sub_position,
                         do_diarization=do_diarization,
-                        hf_token=hf_token,
+                        aai_api_key=aai_api_key,
                     )
                     elapsed = time.time() - t0
 
@@ -513,7 +513,7 @@ with tab_upload:
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
                     sub_bg_color=sub_bg_color, sub_font_name=sub_font_name, sub_position=sub_position,
-                    do_diarization=do_diarization, hf_token=hf_token
+                    do_diarization=do_diarization, aai_api_key=aai_api_key
                 )
             finally:
                 if os.path.exists(tmp_path): os.unlink(tmp_path)
@@ -646,7 +646,7 @@ with tab_youtube:
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
                     sub_bg_color=sub_bg_color, sub_font_name=sub_font_name, sub_position=sub_position,
-                    do_diarization=do_diarization, hf_token=hf_token
+                    do_diarization=do_diarization, aai_api_key=aai_api_key
                 )
                 
 # ── TAB 3: Dashboard ──────────────────────────────────────────────────────────

@@ -205,25 +205,35 @@ def translate_segments(
     return translated
 
 # ── NEW: Diarization ──────────────────────────────────────────────────────────
-def diarize_audio(audio_path: str, hf_token: str) -> list[tuple[float, float, str]]:
-    """Uses pyannote.audio to detect speakers. Returns list of (start, end, speaker_label)."""
-    log.info("[DIARIZATION] Running Pyannote Diarization...")
+def diarize_audio(audio_path: str, aai_api_key: str) -> list[tuple[float, float, str]]:
+    """Uses AssemblyAI to detect speakers. Returns list of (start, end, speaker_label)."""
+    log.info("[DIARIZATION] Running AssemblyAI Diarization...")
     try:
-        from pyannote.audio import Pipeline
+        import assemblyai as aai
     except ImportError:
-        log.warning("[DIARIZATION] pyannote.audio not installed.")
+        log.warning("[DIARIZATION] assemblyai not installed.")
         return []
         
     try:
-        pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", token=hf_token)
-        if not pipeline:
-            log.warning("[DIARIZATION] Failed to load pyannote pipeline (check token/permissions).")
-            return []
-        diarization = pipeline(audio_path)
+        aai.settings.api_key = aai_api_key
+        transcriber = aai.Transcriber()
+        config = aai.TranscriptionConfig(speaker_labels=True)
+        transcript = transcriber.transcribe(audio_path, config=config)
         
+        if getattr(transcript, 'error', None):
+            log.error(f"[DIARIZATION] AssemblyAI Error: {transcript.error}")
+            return []
+            
         results = []
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
-            results.append((turn.start, turn.end, speaker))
+        if not getattr(transcript, 'utterances', None):
+            log.warning("[DIARIZATION] No utterances found by AssemblyAI.")
+            return []
+            
+        for utterance in transcript.utterances:
+            start = utterance.start / 1000.0
+            end = utterance.end / 1000.0
+            speaker = utterance.speaker
+            results.append((start, end, speaker))
         return results
     except Exception as e:
         log.error(f"[DIARIZATION] Error: {e}")
@@ -676,7 +686,7 @@ def dub_video(
     sub_position:   str = "bottom",
     watermark_path: Optional[str] = None,
     do_diarization: bool = False,
-    hf_token:       Optional[str] = None,
+    aai_api_key:       Optional[str] = None,
 ) -> DubResult:
     """
     Full pipeline: video in → dubbed video (+ optional SRT + subtitled video).
@@ -724,8 +734,8 @@ def dub_video(
         )
         
         # ── 2b. DIARIZATION
-        if do_diarization and hf_token:
-            diarization_results = diarize_audio(audio_wav, hf_token)
+        if do_diarization and aai_api_key:
+            diarization_results = diarize_audio(audio_wav, aai_api_key)
             segments = assign_speakers_to_segments(segments, diarization_results, speaker)
 
         # ── 3. Translate
