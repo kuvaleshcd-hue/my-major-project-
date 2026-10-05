@@ -151,8 +151,13 @@ with st.sidebar:
         with sub_col1: sub_font_size = st.number_input("Size", 10, 72, 22)
         with sub_col2: sub_font_color = st.color_picker("Text", "#FFFFFF")
         with sub_col3: sub_bg_color = st.color_picker("Bg", "#000000")
+        
+        sub_col4, sub_col5 = st.columns(2)
+        with sub_col4: sub_font_name = st.selectbox("Font", ["Arial", "Helvetica", "Courier"])
+        with sub_col5: sub_position = st.selectbox("Position", ["bottom", "middle", "top"])
     else:
         sub_font_size = 22; sub_font_color = "#FFFFFF"; sub_bg_color = "#000000"
+        sub_font_name = "Arial"; sub_position = "bottom"
 
     do_srt       = st.toggle("💾 Export SRT file",    value=True,
                               help="Download .srt subtitle file")
@@ -296,6 +301,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                  speaker: str, stem: str,
                  autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
                  bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
+                 sub_font_name: str, sub_position: str,
                  do_diarization: bool, hf_token: str):
     from pipeline import dub_video
 
@@ -330,6 +336,8 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         sub_font_size=sub_font_size,
                         sub_font_color=sub_font_color,
                         sub_bg_color=sub_bg_color,
+                        sub_font_name=sub_font_name,
+                        sub_position=sub_position,
                         do_diarization=do_diarization,
                         hf_token=hf_token,
                     )
@@ -504,7 +512,8 @@ with tab_upload:
                     Path(uploaded.name).stem,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, do_diarization=do_diarization, hf_token=hf_token
+                    sub_bg_color=sub_bg_color, sub_font_name=sub_font_name, sub_position=sub_position,
+                    do_diarization=do_diarization, hf_token=hf_token
                 )
             finally:
                 if os.path.exists(tmp_path): os.unlink(tmp_path)
@@ -636,7 +645,8 @@ with tab_youtube:
                     yt_out, selected_yt, source_lang, speaker, safe_title,
                     autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
-                    sub_bg_color=sub_bg_color, do_diarization=do_diarization, hf_token=hf_token
+                    sub_bg_color=sub_bg_color, sub_font_name=sub_font_name, sub_position=sub_position,
+                    do_diarization=do_diarization, hf_token=hf_token
                 )
                 
 # ── TAB 3: Dashboard ──────────────────────────────────────────────────────────

@@ -412,6 +412,8 @@ def burn_subtitles(
     font_size: int = 22,
     font_color: str = "#FFFFFF",
     bg_color: str = "#000000",
+    font_name: str = "Arial",
+    position: str = "bottom",
 ) -> str:
     """
     Burn translated subtitles onto the video using Python (OpenCV + PIL).
@@ -463,7 +465,12 @@ def burn_subtitles(
     
     process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
     
-    font_path = "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
+    font_map = {
+        "Arial": "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+        "Helvetica": "/System/Library/Fonts/Helvetica.ttc",
+        "Courier": "/System/Library/Fonts/Supplemental/Courier New.ttf",
+    }
+    font_path = font_map.get(font_name, "/System/Library/Fonts/Supplemental/Arial Unicode.ttf")
     if not os.path.exists(font_path):
         font_path = "/System/Library/Fonts/Helvetica.ttc"
     
@@ -502,7 +509,12 @@ def burn_subtitles(
             txt_h = bbox[3] - bbox[1]
             
             x = (width - txt_w) // 2
-            y = height - txt_h - 40
+            if position == "top":
+                y = 40
+            elif position == "middle":
+                y = (height - txt_h) // 2
+            else: # bottom
+                y = height - txt_h - 40
             
             draw.rectangle([x-10, y-10, x+txt_w+10, y+txt_h+10], fill=bg_rgb)
             draw.text((x, y), active_text, font=font, fill=fg_rgb + (255,))
@@ -660,6 +672,8 @@ def dub_video(
     sub_font_size:  int = 22,
     sub_font_color: str = "#FFFFFF",
     sub_bg_color:   str = "#000000",
+    sub_font_name:  str = "Arial",
+    sub_position:   str = "bottom",
     watermark_path: Optional[str] = None,
     do_diarization: bool = False,
     hf_token:       Optional[str] = None,
@@ -757,7 +771,9 @@ def dub_video(
                                             output_path=subtitled_out,
                                             font_size=sub_font_size,
                                             font_color=sub_font_color,
-                                            bg_color=sub_bg_color)
+                                            bg_color=sub_bg_color,
+                                            font_name=sub_font_name,
+                                            position=sub_position)
             final_video_path = subtitled_path
 
         # ── 5c. WATERMARK
