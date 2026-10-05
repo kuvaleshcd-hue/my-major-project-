@@ -7,6 +7,14 @@ Supports:
 
 import streamlit as st
 import db
+import base64
+import os
+
+def get_base64_image(image_path):
+    if not os.path.exists(image_path):
+        return ""
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -354,10 +362,17 @@ def show_login_page():
             if st.session_state["login_mode"] == "login"
             else "Get started with Zivana"
         )
+        
+        logo_b64 = get_base64_image("logo.png")
+        if logo_b64:
+            logo_html = f'<img src="data:image/png;base64,{logo_b64}" width="90" style="margin-bottom: 12px; border-radius: 16px; box-shadow: 0 8px 16px rgba(147, 51, 234, 0.2);">'
+        else:
+            logo_html = '<div class="logo">🎙️</div>'
+            
         st.markdown(f"""
         <div class="glass-card">
             <div class="login-brand">
-                <div class="logo">🎙️</div>
+                {logo_html}
                 <h2>{title}</h2>
                 <p>{subtitle}</p>
             </div>
