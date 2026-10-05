@@ -26,11 +26,11 @@ def _inject_login_css():
 
     /* ── Full-page background (clean white) ───────────────────────── */
     .stApp {
-        background: linear-gradient(160deg, #ffffff 0%, #FFF7ED 40%, #FFEDD5 100%) !important;
+        background: linear-gradient(160deg, #ffffff 0%, #F3E8FF 40%, #E9D5FF 100%) !important;
         overflow: hidden;
     }
 
-    /* ── Animated floating shapes (orange tones) ─────────────────── */
+    /* ── Animated floating shapes (purple tones) ─────────────────── */
     .login-bg {
         position: fixed; inset: 0; z-index: 0;
         pointer-events: none; overflow: hidden;
@@ -43,24 +43,24 @@ def _inject_login_css():
     }
     .login-bg .orb-1 {
         width: 420px; height: 420px;
-        background: rgba(249, 115, 22, 0.22);
+        background: rgba(147, 51, 234, 0.22);
         top: -80px; left: -60px;
     }
     .login-bg .orb-2 {
         width: 500px; height: 500px;
-        background: rgba(251, 146, 60, 0.18);
+        background: rgba(168, 85, 247, 0.18);
         bottom: -120px; right: -80px;
         animation-delay: -3s;
     }
     .login-bg .orb-3 {
         width: 300px; height: 300px;
-        background: rgba(234, 88, 12, 0.14);
+        background: rgba(126, 34, 206, 0.14);
         top: 45%; left: 55%;
         animation-delay: -6s;
     }
     .login-bg .orb-4 {
         width: 250px; height: 250px;
-        background: rgba(253, 186, 116, 0.20);
+        background: rgba(192, 132, 252, 0.20);
         top: 10%; right: 15%;
         animation-delay: -8s;
     }
@@ -77,7 +77,7 @@ def _inject_login_css():
         transform: translateX(-50%);
         width: 60%;
         height: 4px;
-        background: linear-gradient(90deg, #FB923C, #F97316, #EA580C);
+        background: linear-gradient(90deg, #C084FC, #9333EA, #7E22CE);
         border-radius: 0 0 4px 4px;
     }
 
@@ -86,13 +86,13 @@ def _inject_login_css():
         background: rgba(255, 255, 255, 0.75);
         backdrop-filter: blur(24px);
         -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(249, 115, 22, 0.12);
+        border: 1px solid rgba(147, 51, 234, 0.12);
         border-radius: 24px;
         padding: 48px 40px 40px;
         max-width: 440px;
         margin: 0 auto;
         box-shadow:
-            0 25px 60px -15px rgba(249, 115, 22, 0.12),
+            0 25px 60px -15px rgba(147, 51, 234, 0.12),
             0 4px 20px rgba(0, 0, 0, 0.04);
         animation: card-up 0.7s cubic-bezier(0.16, 1, 0.3, 1);
         position: relative;
@@ -116,7 +116,7 @@ def _inject_login_css():
         font-family: 'Inter', sans-serif;
         font-size: 26px;
         font-weight: 700;
-        background: linear-gradient(135deg, #EA580C, #F97316, #FB923C);
+        background: linear-gradient(135deg, #7E22CE, #9333EA, #C084FC);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin: 0 0 4px;
@@ -137,14 +137,14 @@ def _inject_login_css():
     .login-divider::after {
         content: '';
         flex: 1;
-        border-bottom: 1px solid rgba(249, 115, 22, 0.15);
+        border-bottom: 1px solid rgba(147, 51, 234, 0.15);
     }
     .login-divider span { padding: 0 12px; }
 
-    /* ── Streamlit input overrides (light / orange theme) ─────────── */
+    /* ── Streamlit input overrides (light / purple theme) ─────────── */
     div[data-testid="stTextInput"] input {
-        background: rgba(255, 247, 237, 0.6) !important;
-        border: 1px solid rgba(249, 115, 22, 0.2) !important;
+        background: rgba(250, 245, 255, 0.6) !important;
+        border: 1px solid rgba(147, 51, 234, 0.2) !important;
         border-radius: 12px !important;
         color: #1c1917 !important;
         padding: 12px 16px !important;
@@ -152,8 +152,8 @@ def _inject_login_css():
         transition: border-color 0.25s, box-shadow 0.25s !important;
     }
     div[data-testid="stTextInput"] input:focus {
-        border-color: #F97316 !important;
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12) !important;
+        border-color: #9333EA !important;
+        box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.12) !important;
     }
     div[data-testid="stTextInput"] input::placeholder {
         color: #a8a29e !important;
@@ -164,9 +164,9 @@ def _inject_login_css():
         font-size: 14px !important;
     }
 
-    /* ── Primary button (orange gradient) ─────────────────────────── */
+    /* ── Primary button (purple gradient) ─────────────────────────── */
     div[data-testid="stButton"] button[kind="primary"] {
-        background: linear-gradient(135deg, #F97316, #EA580C) !important;
+        background: linear-gradient(135deg, #9333EA, #7E22CE) !important;
         color: white !important;
         border: none !important;
         border-radius: 12px !important;
@@ -178,22 +178,22 @@ def _inject_login_css():
         width: 100% !important;
     }
     div[data-testid="stButton"] button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #EA580C, #C2410C) !important;
-        box-shadow: 0 10px 25px -8px rgba(249, 115, 22, 0.45) !important;
+        background: linear-gradient(135deg, #7E22CE, #6B21A8) !important;
+        box-shadow: 0 10px 25px -8px rgba(147, 51, 234, 0.45) !important;
         transform: translateY(-1px);
     }
 
     /* ── Secondary / link button ──────────────────────────────────── */
     div[data-testid="stButton"] button[kind="secondary"] {
         background: transparent !important;
-        color: #F97316 !important;
-        border: 1px solid rgba(249, 115, 22, 0.25) !important;
+        color: #9333EA !important;
+        border: 1px solid rgba(147, 51, 234, 0.25) !important;
         border-radius: 12px !important;
         transition: all 0.2s !important;
     }
     div[data-testid="stButton"] button[kind="secondary"]:hover {
-        background: rgba(249, 115, 22, 0.06) !important;
-        border-color: rgba(249, 115, 22, 0.4) !important;
+        background: rgba(147, 51, 234, 0.06) !important;
+        border-color: rgba(147, 51, 234, 0.4) !important;
     }
 
     /* ── Google button ────────────────────────────────────────────── */
@@ -220,8 +220,8 @@ def _inject_login_css():
         justify-content: center;
     }
     .google-btn:hover {
-        background: #FFFBEB;
-        box-shadow: 0 2px 8px rgba(249, 115, 22, 0.12);
+        background: #FAF5FF;
+        box-shadow: 0 2px 8px rgba(147, 51, 234, 0.12);
     }
     .google-btn img {
         width: 20px; height: 20px;
@@ -251,12 +251,12 @@ def _inject_login_css():
 
     /* ── OAuth info box ───────────────────────────────────────────── */
     .oauth-info {
-        background: rgba(249, 115, 22, 0.06);
-        border: 1px solid rgba(249, 115, 22, 0.18);
+        background: rgba(147, 51, 234, 0.06);
+        border: 1px solid rgba(147, 51, 234, 0.18);
         border-radius: 12px;
         padding: 12px 16px;
         font-size: 13px;
-        color: #EA580C;
+        color: #7E22CE;
         text-align: center;
         margin-top: 12px;
         line-height: 1.5;
