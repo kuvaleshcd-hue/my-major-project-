@@ -588,36 +588,6 @@ def mux_video_audio(video_path: str, dubbed_audio: str, output_path: str) -> Non
     log.info(f"[MUX] Done → {output_path}")
 
 
-# ── NEW: Lip Sync ─────────────────────────────────────────────────────────────
-def apply_lip_sync(video_path: str, audio_path: str, output_path: str) -> bool:
-    """Morphs the speaker's lips using Wav2Lip (via Replicate API)."""
-    log.info(f"[LIPSYNC] Applying Wav2Lip to {video_path}...")
-    if not os.getenv("REPLICATE_API_TOKEN"):
-        log.warning("[LIPSYNC] REPLICATE_API_TOKEN not set. Skipping lip-sync.")
-        return False
-    try:
-        import replicate
-        import urllib.request
-        # lucataco/wav2lip takes face and audio
-        output_url = replicate.run(
-            "lucataco/wav2lip:c32729a6ddc735d6dc14ceee0f16f1a8c983c270d1ed26a9712a704e6c97a216",
-            input={
-                "face": open(video_path, "rb"),
-                "audio": open(audio_path, "rb"),
-                "pads": "0 10 0 0"
-            }
-        )
-        log.info(f"[LIPSYNC] Success! Downloading from {output_url}")
-        urllib.request.urlretrieve(output_url, output_path)
-        return True
-    except ImportError:
-        log.warning("[LIPSYNC] replicate package not installed.")
-        return False
-    except Exception as e:
-        log.error(f"[LIPSYNC] Replicate API failed: {e}")
-        return False
-
-
 # ── Public entry point ────────────────────────────────────────────────────────
 def dub_video(
     video_path:     str,
@@ -628,7 +598,6 @@ def dub_video(
     autofit:        bool = True,
     burn_subs:      bool = True,
     export_srt:     bool = True,
-    do_lipsync:     bool = False,
     keep_bgm:       bool = False,
     bgm_volume:     float = 0.5,
     sub_font_size:  int = 22,
@@ -650,7 +619,6 @@ def dub_video(
         autofit     : Stretch/compress TTS audio to fit original timing.
         burn_subs   : Burn translated subtitles onto output video.
         export_srt  : Write .srt file alongside output video.
-        do_lipsync  : Sync lips to the new audio (requires Replicate API).
     """
     api_key = os.getenv("SARVAM_API_KEY")
     if not api_key:
@@ -711,17 +679,7 @@ def dub_video(
         duration   = get_video_duration(video_path)
         dubbed_wav = os.path.join(tmpdir, "dubbed_audio.wav")
         build_audio_track(seg_audio_pairs, duration, dubbed_wav, bgm_path=bgm_path, bgm_volume=bgm_volume)
-        
-        lip_synced = False
-        if do_lipsync:
-            ls_out = os.path.join(tmpdir, "lipsync.mp4")
-            if apply_lip_sync(video_path, dubbed_wav, ls_out):
-                import shutil
-                shutil.copy(ls_out, output_path)
-                lip_synced = True
-                
-        if not lip_synced:
-            mux_video_audio(video_path, dubbed_wav, output_path)
+        mux_video_audio(video_path, dubbed_wav, output_path)
 
         # ── 5a. Copy Audio-Only
         audio_out = output_path.replace(".mp4", ".wav")
