@@ -140,6 +140,8 @@ with st.sidebar:
 
     do_srt       = st.toggle("💾 Export SRT file",    value=True,
                               help="Download .srt subtitle file")
+    do_lipsync   = st.toggle("👄 Lip Sync (Wav2Lip)", value=False,
+                              help="Sync speaker's lips to the dubbed audio (requires Replicate API key in .env)")
     do_bgm       = st.toggle("🎵 Keep background music", value=False,
                               help="Retain original background music using Demucs AI (takes longer)")
     if do_bgm:
@@ -278,7 +280,7 @@ def show_result(r: dict, stem: str):
 
 def run_pipeline(input_path: str, selected: list, source_lang: str,
                  speaker: str, stem: str,
-                 autofit: bool, burn_subs: bool, do_srt: bool, keep_bgm: bool,
+                 autofit: bool, burn_subs: bool, do_srt: bool, do_lipsync: bool, keep_bgm: bool,
                  bgm_volume: float, sub_font_size: int, sub_font_color: str, sub_bg_color: str,
                  sub_font_name: str, sub_position: str):
     from pipeline import dub_video
@@ -309,6 +311,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
                         autofit=autofit,
                         burn_subs=burn_subs,
                         export_srt=do_srt,
+                        do_lipsync=do_lipsync,
                         keep_bgm=keep_bgm,
                         bgm_volume=bgm_volume,
                         sub_font_size=sub_font_size,
@@ -321,6 +324,8 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
 
                     if autofit:
                         st.write("⏱️ Auto-fit: timing adjusted")
+                    if do_lipsync:
+                        st.write("👄 Lip Sync: Wav2Lip applied")
                     if result.srt_path:
                         st.write("💾 SRT: subtitle file exported")
                     if result.subtitled_video:
@@ -463,6 +468,7 @@ with tab_upload:
         else:
             feats = []
             if do_autofit:   feats.append("⏱️ Auto-fit")
+            if do_lipsync:   feats.append("👄 Lip Sync")
             if do_subtitles: feats.append("📝 Subtitles")
             if do_srt:       feats.append("💾 SRT")
             if do_bgm:       feats.append("🎵 BGM")
@@ -485,7 +491,7 @@ with tab_upload:
                 run_pipeline(
                     tmp_path, selected_upload, source_lang, speaker,
                     Path(uploaded.name).stem,
-                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
+                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, do_lipsync=do_lipsync, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
                     sub_bg_color=sub_bg_color, sub_font_name=sub_font_name, sub_position=sub_position
                 )
@@ -554,6 +560,7 @@ with tab_youtube:
         else:
             feats = []
             if do_autofit:   feats.append("⏱️ Auto-fit")
+            if do_lipsync:   feats.append("👄 Lip Sync")
             if do_subtitles: feats.append("📝 Subtitles")
             if do_srt:       feats.append("💾 SRT")
             if do_bgm:       feats.append("🎵 BGM")
@@ -616,7 +623,7 @@ with tab_youtube:
                 safe_title = re.sub(r"[^\w\-]", "_", yt_title)[:40]
                 run_pipeline(
                     yt_out, selected_yt, source_lang, speaker, safe_title,
-                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, keep_bgm=do_bgm,
+                    autofit=do_autofit, burn_subs=do_subtitles, do_srt=do_srt, do_lipsync=do_lipsync, keep_bgm=do_bgm,
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
                     sub_bg_color=sub_bg_color, sub_font_name=sub_font_name, sub_position=sub_position
                 )
