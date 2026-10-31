@@ -282,3 +282,9 @@ MIT License — free to use, modify, and distribute.
 ---
 
 *Built with ❤️ for Indian language speakers — because every language deserves great content.*.   
+
+
+
+HOW TO RUN THIS ONE :-
+
+streamlit run app.py
