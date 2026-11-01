@@ -62,6 +62,71 @@ st.markdown("""
     font-size: 0.85rem; line-height: 1.6;
     max-height: 130px; overflow-y: auto; color: #374151;
   }
+  @keyframes pulse-live {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+  }
+  .live-pulse {
+    display: inline-block;
+    width: 10px; height: 10px;
+    background-color: #22c55e;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse-live 1.5s infinite ease-in-out;
+  }
+  .live-status-pill {
+    display: inline-flex;
+    align-items: center;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 6px 16px;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid #334155;
+    margin-bottom: 1rem;
+  }
+  .teleprompter-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+  .teleprompter-target {
+    background: linear-gradient(135deg, #0e7490 0%, #155e75 100%);
+    color: #ffffff;
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 10px 15px -3px rgba(14, 116, 144, 0.2);
+  }
+  .teleprompter-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .teleprompter-text {
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1.5;
+    min-height: 48px;
+  }
+  .sub-history-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    max-height: 280px;
+    overflow-y: auto;
+  }
   #MainMenu {visibility:hidden;} footer {visibility:hidden;} header {visibility:hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -69,7 +134,7 @@ st.markdown("""
 st.markdown("""
 <div class="hero">
   <h1>🎙️ Zivana</h1>
-  <p>Dub any video into Indian languages — upload a file or paste a YouTube URL.</p>
+  <p>Dub any video into Indian languages — upload a file, paste YouTube, or dub Live from Microphone.</p>
   <div class="pipeline-row">
     <span class="badge">🎤 Saaras v3 · STT</span>
     <span class="badge">🌐 Sarvam-Translate v1</span>
@@ -77,6 +142,7 @@ st.markdown("""
     <span class="badge">🎬 FFmpeg · Mux</span>
   </div>
   <div style="margin-top:10px">
+    <span class="feature-badge">🎙️ Live Dubbing & Subtitles</span>
     <span class="feature-badge">⏱️ Auto-fit timing</span>
     <span class="feature-badge">📝 Subtitle overlay</span>
     <span class="feature-badge">💾 SRT export</span>
@@ -422,7 +488,7 @@ def run_pipeline(input_path: str, selected: list, source_lang: str,
 # ══════════════════════════════════════════════════════════════════════════════
 # TABS
 # ══════════════════════════════════════════════════════════════════════════════
-tab_upload, tab_youtube, tab_dashboard = st.tabs(["📁 Upload Video", "▶️ YouTube URL", "📊 Dashboard"])
+tab_upload, tab_youtube, tab_live, tab_dashboard = st.tabs(["📁 Upload Video", "▶️ YouTube URL", "🎙️ Live Dubbing & Subtitles", "📊 Dashboard"])
 
 # ── TAB 1: Upload ─────────────────────────────────────────────────────────────
 with tab_upload:
@@ -620,8 +686,194 @@ with tab_youtube:
                     bgm_volume=bgm_volume, sub_font_size=sub_font_size, sub_font_color=sub_font_color,
                     sub_bg_color=sub_bg_color, sub_font_name=sub_font_name, sub_position=sub_position
                 )
-                
-# ── TAB 3: Dashboard ──────────────────────────────────────────────────────────
+
+# ── TAB 3: Live Dubbing & Subtitles ──────────────────────────────────────────
+with tab_live:
+    import live_pipeline
+
+    st.markdown("### 🎙️ Real-Time Live Dubbing & Live Subtitles")
+    st.caption("Speak continuously into your microphone. Zivana streams audio to Sarvam Saaras Realtime STT, translates utterances instantly with Sarvam-Translate, and synthesizes live voice with Bulbul v3 streaming TTS.")
+
+    if not os.getenv("SARVAM_API_KEY"):
+        st.warning("⚠️ Please provide a valid SARVAM_API_KEY in the sidebar to start live dubbing.")
+    else:
+        # Settings Bar
+        live_ctrl1, live_ctrl2, live_ctrl3, live_ctrl4 = st.columns([1.2, 1.2, 1, 1])
+
+        with live_ctrl1:
+            live_src_options = {"English (en-IN)": "en-IN"} | {
+                f"{v} ({k})": k for k, v in live_pipeline.SUPPORTED_LANGUAGES.items() if k != "en-IN"
+            }
+            live_src_choice = st.selectbox(
+                "Source Language",
+                list(live_src_options.keys()),
+                index=0,
+                key="live_src_sel"
+            )
+            live_src_lang = live_src_options[live_src_choice]
+
+        with live_ctrl2:
+            live_tgt_options = {
+                f"{v} ({k})": k for k, v in live_pipeline.SUPPORTED_LANGUAGES.items()
+            }
+            live_tgt_choice = st.selectbox(
+                "Target Dubbing Language",
+                list(live_tgt_options.keys()),
+                index=0,  # Kannada
+                key="live_tgt_sel"
+            )
+            live_target_lang = live_tgt_options[live_tgt_choice]
+
+        with live_ctrl3:
+            live_speaker_choice = st.selectbox(
+                "Bulbul Voice",
+                ["shubh", "anushka", "aditya", "priya", "rahul", "neha", "karun"],
+                index=0,
+                key="live_speaker_sel"
+            )
+
+        with live_ctrl4:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            live_play_audio = st.toggle(
+                "🔊 Voice Playback",
+                value=True,
+                help="Play dubbed voice through MacBook speakers in real time",
+                key="live_play_audio_tog"
+            )
+
+        # Control Buttons
+        btn_col1, btn_col2, _ = st.columns([1, 1, 2])
+        current_session = st.session_state.get("live_session")
+        is_session_active = bool(current_session and current_session.is_running)
+
+        with btn_col1:
+            if not is_session_active:
+                if st.button("▶️ Start Live Dubbing", type="primary", use_container_width=True, key="btn_start_live"):
+                    try:
+                        sess = live_pipeline.LiveDubSession(
+                            source_lang=live_src_lang,
+                            target_lang=live_target_lang,
+                            speaker=live_speaker_choice,
+                            play_audio=live_play_audio,
+                        )
+                        sess.start()
+                        st.session_state["live_session"] = sess
+                        st.rerun()
+                    except Exception as ex:
+                        st.error(f"Failed to start live session: {ex}")
+            else:
+                st.button("▶️ Running...", disabled=True, use_container_width=True, key="btn_running_live")
+
+        with btn_col2:
+            if is_session_active:
+                if st.button("⏹️ Stop Session", type="secondary", use_container_width=True, key="btn_stop_live"):
+                    if current_session:
+                        current_session.stop()
+                    st.session_state["live_session"] = None
+                    st.rerun()
+            else:
+                st.button("⏹️ Stopped", disabled=True, use_container_width=True, key="btn_stopped_live")
+
+        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+
+        # Live Real-time Fragment
+        @st.fragment(run_every="0.5s")
+        def render_live_teleprompter():
+            active_sess = st.session_state.get("live_session")
+            running = bool(active_sess and active_sess.is_running)
+
+            if running:
+                status_text = active_sess.status
+                status_html = f"""
+                <div class="live-status-pill">
+                  <span class="live-pulse"></span>
+                  <span>{status_text}</span>
+                  <span style="margin-left: 12px; font-weight: 400; font-size: 0.78rem; opacity: 0.8;">
+                    {live_src_lang} ➔ {live_target_lang} ({live_speaker_choice})
+                  </span>
+                </div>
+                """
+            else:
+                status_html = """
+                <div class="live-status-pill" style="border-color: #475569; color: #94a3b8;">
+                  <span style="display:inline-block; width:8px; height:8px; background:#94a3b8; border-radius:50%; margin-right:8px;"></span>
+                  <span>Session Idle — Click 'Start Live Dubbing' and speak into your microphone</span>
+                </div>
+                """
+            st.markdown(status_html, unsafe_allow_html=True)
+
+            partial_text = (active_sess.current_partial if (active_sess and active_sess.current_partial) else "Listening for speech...")
+            translated_text = (active_sess.current_translated if (active_sess and active_sess.current_translated) else "Translated subtitles will appear here in real-time...")
+
+            col_sub_src, col_sub_tgt = st.columns(2, gap="medium")
+
+            with col_sub_src:
+                st.markdown(f"""
+                <div class="teleprompter-card">
+                  <div class="teleprompter-title" style="color: #64748b;">
+                    <span>🎙️ Live Transcription (Source)</span>
+                    <span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;">{live_src_lang}</span>
+                  </div>
+                  <div class="teleprompter-text" style="color: #0f172a;">
+                    {partial_text}
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col_sub_tgt:
+                st.markdown(f"""
+                <div class="teleprompter-target">
+                  <div class="teleprompter-title" style="color: #a5f3fc;">
+                    <span>🔊 Live Dubbed Subtitle (Target)</span>
+                    <span style="background: rgba(255,255,255,0.2); color: #ffffff; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;">{live_target_lang}</span>
+                  </div>
+                  <div class="teleprompter-text">
+                    {translated_text}
+                  </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            subs = active_sess.subtitles if active_sess else []
+            if subs:
+                st.markdown(f"#### 📜 Live Subtitle Stream ({len(subs)} utterances)")
+                items_html = []
+                for s in reversed(subs[-10:]):
+                    items_html.append(f"""
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;">
+                      <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b; margin-bottom: 4px;">
+                        <span>⏱️ {s.timestamp}</span>
+                        <span>#{s.index}</span>
+                      </div>
+                      <div style="font-size: 0.88rem; color: #475569; margin-bottom: 4px;"><b>Original:</b> {s.source_text}</div>
+                      <div style="font-size: 1rem; color: #0891b2; font-weight: 600;"><b>Dubbed:</b> {s.translated_text}</div>
+                    </div>
+                    """)
+                st.markdown(f'<div class="sub-history-box">{"".join(items_html)}</div>', unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                exp_col1, exp_col2 = st.columns(2)
+                with exp_col1:
+                    st.download_button(
+                        "💾 Download Live Subtitles (.srt)",
+                        data=active_sess.export_srt(),
+                        file_name=f"live_dubbing_{live_target_lang}.srt",
+                        mime="text/plain",
+                        use_container_width=True,
+                        key=f"dl_live_srt_{len(subs)}"
+                    )
+                with exp_col2:
+                    st.download_button(
+                        "📄 Download Session Log (.txt)",
+                        data=active_sess.export_text(),
+                        file_name=f"live_transcript_{live_target_lang}.txt",
+                        mime="text/plain",
+                        use_container_width=True,
+                        key=f"dl_live_txt_{len(subs)}"
+                    )
+
+        render_live_teleprompter()
+
+# ── TAB 4: Dashboard ──────────────────────────────────────────────────────────
 with tab_dashboard:
     st.markdown("#### 📊 Processing History")
     history = db.get_history()

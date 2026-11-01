@@ -24,6 +24,7 @@ Creators, educators, and businesses need a way to reach regional audiences witho
 ---
 
 ## ✨ Features Added Post-Hackathon
+- **🎙️ Real-Time Live Dubbing & Subtitles:** Speak continuously into your microphone to get real-time bilingual subtitles (original speech + translated caption teleprompter) and instant live voice dubbing via Sarvam streaming WebSockets (`saaras:v3-realtime` + `sarvam-translate:v1` + `bulbul:v3`).
 - **✂️ Video Trimming:** Select a specific start and end timestamp to dub only a portion of the video, saving API costs and processing time.
 - **🔊 BGM Volume Control:** Retain the original background music using Demucs AI, and precisely control its volume with a slider to prevent it from overpowering the dubbed voices.
 - **🎵 Audio-Only Export:** Automatically generates and provides a `.wav` download link of just the dubbed audio.
@@ -202,14 +203,15 @@ python dub.py --help
 
 ```
 sarvam-videodubber/
-├── app.py              # Streamlit web app (upload + multi-language UI)
-├── pipeline.py         # Core dubbing pipeline (all 5 steps)
-├── dub.py              # CLI entry point
-├── sarvam_test.py      # API sanity check (run this first)
+├── app.py              # Streamlit web app (upload, YouTube, and Live Dubbing UI)
+├── live_pipeline.py    # Real-time streaming dubber & live subtitles engine
+├── pipeline.py         # Offline batch dubbing pipeline
+├── dub.py              # CLI entry point for offline dubbing
+├── sarvam_test.py      # API sanity check
 ├── requirements.txt    # Python dependencies
 ├── .env.example        # API key template
 ├── .gitignore          # Excludes .env, videos, audio files
-└── README.md           # This file
+└── README.md           # Documentation
 ```
 
 ---
