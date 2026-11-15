@@ -8,7 +8,7 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.42%2B-FF4B4B.svg?logo=streamlit&logoColor=white)](https://streamlit.io)
 [![Sarvam AI](https://img.shields.io/badge/Sarvam%20AI-Saaras%20%7C%20Translate%20%7C%20Bulbul-7C3AED.svg)](https://dashboard.sarvam.ai)
 [![FFmpeg](https://img.shields.io/badge/FFmpeg-5.0%2B-007808.svg?logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE).   
 
 ---
 
