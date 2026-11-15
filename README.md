@@ -392,7 +392,7 @@ python dub.py --help
 python live_pipeline.py --source en-IN --lang kn-IN --speaker shubh
 
 # Live subtitles only (mutes dubbed voice playback)
-python live_pipeline.py --source en-IN --lang hi-IN --mute
+python live_pipeline.py --source en-IN --lang hi-IN --mute.  
 ```
 
 ---
