@@ -2,7 +2,7 @@
 ### AI-Powered Multi-Language Video Dubbing & Real-Time Live Speech Translation Platform
 *Built with Sarvam AI's Native Stack — Born at the Sarvam BuildIn' Hours Hackathon*
 
-> *"Breaking language barriers in Indian video content and live speech — one dub at a time."*
+> *"Breaking language barriers in Indian video content and live speech — one dub at a time."*.  
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.42%2B-FF4B4B.svg?logo=streamlit&logoColor=white)](https://streamlit.io)
