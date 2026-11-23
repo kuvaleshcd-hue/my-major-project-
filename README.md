@@ -78,7 +78,7 @@ Originally created during **Sarvam BuildIn' Hours** as **Sarvam VideoDubber** (a
 Every dubbing job generates and exposes direct download buttons for:
 * 🎬 **Dubbed MP4 Video** (synchronized dubbed audio + original video).
 * 📝 **Dubbed MP4 with Burned Subtitles** (styled burned-in subtitles).
-* 🎵 **Standalone Audio Track (.wav)** (24 kHz high-quality audio for podcasts, audiobooks, and radio).
+* 🎵 **Standalone Audio Track (.wav)** (24 kHz high-quality audio for podcasts, audiobooks, and radio).   
 * 💾 **SubRip Subtitle File (.srt)**.
 * 📄 **Dual Transcripts** (viewable and copyable source transcript and translated text).
 
